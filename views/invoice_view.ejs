@@ -1,0 +1,35 @@
+<%- include('partials/header', { title: invoice.invoice_number, user, active: 'students' }) %>
+
+  <div class="breadcrumb"><a href="/enrollments/<%= student.id %>"><%= student.name %></a> / <%= invoice.invoice_number %></div>
+  <div class="page-header">
+    <div>
+      <h1><%= invoice.invoice_number %></h1>
+      <p class="subtitle">Invoice for <%= student.name %> (<%= student.student_code %>) · Issued <%= invoice.issue_date %></p>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <a href="/invoices/<%= invoice.id %>/pdf" target="_blank" class="btn btn-primary">Download PDF</a>
+      <% if (canEdit) { %>
+        <a href="/invoices/<%= invoice.id %>/edit" class="btn btn-outline">Edit</a>
+        <form method="POST" action="/invoices/<%= invoice.id %>/delete" onsubmit="return confirm('Delete this invoice? This cannot be undone.');">
+          <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="card card-pad" style="max-width: 560px;">
+    <div class="detail-grid">
+      <div class="detail-item"><div class="k">Description</div><div class="v"><%= invoice.description %></div></div>
+      <div class="detail-item"><div class="k">Amount</div><div class="v">₹<%= invoice.amount.toLocaleString('en-IN') %></div></div>
+      <div class="detail-item"><div class="k">Issue Date</div><div class="v"><%= invoice.issue_date %></div></div>
+      <div class="detail-item"><div class="k">Due Date</div><div class="v"><%= invoice.due_date || '—' %></div></div>
+    </div>
+    <% if (invoice.notes) { %>
+      <div class="form-section-title">Notes</div>
+      <div class="v" style="font-weight:400;"><%= invoice.notes %></div>
+    <% } %>
+  </div>
+
+  <div class="hint" style="margin-top:14px;">"Download PDF" opens the exact same document whether you're on a computer or a phone — it's generated on the server, not by your browser's print function, so it always looks identical.</div>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,54 @@
+<%- include('partials/header', { title: 'Courses', user, active: 'courses' }) %>
+
+  <div class="breadcrumb"><a href="/students">Students</a> / Courses</div>
+  <div class="page-header">
+    <div>
+      <h1>Courses</h1>
+      <p class="subtitle">The list students pick a course from. <%= canManage ? 'Add new courses below.' : 'Ask your Admin to add a course that\'s missing.' %></p>
+    </div>
+  </div>
+
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+  <% if (canManage) { %>
+  <div class="card card-pad" style="max-width: 480px; margin-bottom: 20px;">
+    <form method="POST" action="/courses" style="display:flex; gap:8px; align-items:flex-end;">
+      <div class="form-group" style="flex:1; margin:0;">
+        <label>New course name</label>
+        <input type="text" name="name" placeholder="e.g. Cloud Computing Fundamentals" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Add</button>
+    </form>
+  </div>
+  <% } %>
+
+  <% if (courses.length === 0) { %>
+    <div class="card"><div class="empty-state">
+      <div class="big">📚</div>
+      No courses added yet.
+    </div></div>
+  <% } else { %>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Course</th><th class="num">Students</th><th>Added By</th><% if (canManage) { %><th></th><% } %></tr></thead>
+      <tbody>
+        <% courses.forEach(c => { %>
+        <tr>
+          <td data-label="Course"><strong><%= c.name %></strong></td>
+          <td class="num" data-label="Students"><%= c.student_count %></td>
+          <td data-label="Added By"><%= c.created_by_name || '—' %></td>
+          <% if (canManage) { %>
+          <td>
+            <form method="POST" action="/courses/<%= c.id %>/delete" onsubmit="return confirm('Delete the course &quot;<%= c.name %>&quot;?');">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          </td>
+          <% } %>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+<%- include('partials/footer') %>

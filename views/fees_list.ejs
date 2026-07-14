@@ -1,0 +1,47 @@
+<%- include('partials/header', { title: 'Fee Collection', user, active: 'fees' }) %>
+
+  <div class="page-header">
+    <div>
+      <h1>Fee Collection Details</h1>
+      <p class="subtitle">Every collection entry, linked back to the Student Master record it belongs to.</p>
+    </div>
+    <a href="/fees/export?from=<%= filters.from %>&to=<%= filters.to %>" class="btn btn-outline">Export</a>
+  </div>
+
+  <form class="filters-bar" method="GET" action="/fees">
+    <div class="form-group"><label>From</label><input type="date" name="from" value="<%= filters.from %>"></div>
+    <div class="form-group"><label>To</label><input type="date" name="to" value="<%= filters.to %>"></div>
+    <button type="submit" class="btn btn-outline">Filter</button>
+    <% if (filters.from || filters.to) { %><a href="/fees" class="btn btn-outline">Clear</a><% } %>
+  </form>
+
+  <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px,1fr));">
+    <div class="stat-card green"><div class="label">Total Collected (filtered)</div><div class="value">₹<%= totalCollected.toLocaleString('en-IN') %></div><div class="sub"><%= entries.length %> entries</div></div>
+  </div>
+
+  <% if (entries.length === 0) { %>
+    <div class="card"><div class="empty-state"><div class="big">₹</div>No fee collection entries found for this range.</div></div>
+  <% } else { %>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Date</th><th>Student ID</th><th>Student Name</th><th>Batch</th><th class="num">Amount Collected</th><th>Collected By</th><th class="wrap">Notes</th>
+      </tr></thead>
+      <tbody>
+        <% entries.forEach(e => { %>
+        <tr onclick="window.location='/enrollments/<%= e.enrollment_id %>'" style="cursor:pointer;">
+          <td data-label="Date"><%= e.collection_date %></td>
+          <td data-label="Student ID"><%= e.student_code %></td>
+          <td data-label="Student Name"><strong><%= e.student_name %></strong></td>
+          <td data-label="Batch"><%= e.batch_name || '—' %></td>
+          <td class="num" data-label="Amount">₹<%= e.amount.toLocaleString('en-IN') %></td>
+          <td data-label="Collected By"><%= e.collected_by_name || '—' %></td>
+          <td class="wrap" data-label="Notes"><%= e.notes || '—' %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+<%- include('partials/footer') %>

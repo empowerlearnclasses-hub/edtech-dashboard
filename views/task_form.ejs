@@ -1,0 +1,116 @@
+<%- include('partials/header', { title: 'New Task', user, active: 'tasks' }) %>
+
+  <div class="breadcrumb"><a href="/tasks">Tasks</a> / New</div>
+  <div class="page-header">
+    <div>
+      <h1>Assign a new task</h1>
+      <p class="subtitle">Pick who it's for, and whether it applies to specific students, a whole batch, or nothing student-related at all.</p>
+    </div>
+  </div>
+
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+  <div class="card card-pad">
+    <form method="POST" action="/tasks">
+
+      <div class="form-section-title" style="margin-top:0;">What needs to be done</div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Task title <span class="req">*</span></label>
+          <input type="text" name="title" required placeholder="e.g. Add students to batch WhatsApp group" value="<%= formValues.title || '' %>">
+        </div>
+        <div class="form-group full">
+          <label>Description</label>
+          <textarea name="description" placeholder="Any extra instructions"><%= formValues.description || '' %></textarea>
+        </div>
+        <div class="form-group">
+          <label>Assign to <span class="req">*</span></label>
+          <select name="assigned_to" required>
+            <option value="">Select staff member</option>
+            <% staffList.forEach(s => { %>
+              <option value="<%= s.id %>" <%= String(formValues.assigned_to) === String(s.id) ? 'selected' : '' %>>
+                <%= s.name %><%= s.designation ? ' — ' + s.designation : '' %> (<%= roleLabel(s.role) %>)
+              </option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Due date</label>
+          <input type="date" name="due_date" value="<%= formValues.due_date || '' %>">
+        </div>
+      </div>
+
+      <div class="form-section-title">Does this task relate to students?</div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <div class="checkbox-row">
+            <input type="radio" id="scopeGeneral" name="scope_type" value="general" onchange="toggleScope()" <%= (!formValues.scope_type || formValues.scope_type === 'general') ? 'checked' : '' %>>
+            <label for="scopeGeneral">Not student-related — just a single task to complete</label>
+          </div>
+          <div class="checkbox-row" style="margin-top:8px;">
+            <input type="radio" id="scopeBatch" name="scope_type" value="batch" onchange="toggleScope()" <%= formValues.scope_type === 'batch' ? 'checked' : '' %>>
+            <label for="scopeBatch">Applies to every student in one batch</label>
+          </div>
+          <div class="checkbox-row" style="margin-top:8px;">
+            <input type="radio" id="scopeStudents" name="scope_type" value="students" onchange="toggleScope()" <%= formValues.scope_type === 'students' ? 'checked' : '' %>>
+            <label for="scopeStudents">Applies to specific students I'll select</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-grid" id="batchBlock" style="display:none; margin-top:14px;">
+        <div class="form-group">
+          <label>Batch <span class="req">*</span></label>
+          <% if (batches.length > 0) { %>
+          <select name="batch_id">
+            <option value="">Select batch</option>
+            <% batches.forEach(b => { %>
+              <option value="<%= b.id %>" <%= String(formValues.batch_id) === String(b.id) ? 'selected' : '' %>><%= b.name %></option>
+            <% }) %>
+          </select>
+          <div class="hint">Every student currently in this batch will be tracked — including any added to it later.</div>
+          <% } else { %>
+          <div class="alert alert-error" style="margin:0;">No batches exist yet. <a href="/batches/new">Create one</a> first.</div>
+          <% } %>
+        </div>
+      </div>
+
+      <div id="studentsBlock" style="display:none; margin-top:14px;">
+        <div class="form-group full">
+          <label>Select students <span class="req">*</span></label>
+          <input type="text" id="studentSearch" placeholder="Type to search by name or ID" oninput="filterStudents()">
+          <div style="max-height: 320px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-top: 8px;">
+            <% students.forEach(s => { %>
+              <div class="checkbox-row student-row" data-search="<%= (s.name + ' ' + s.student_code).toLowerCase() %>" style="padding: 5px 0;">
+                <input type="checkbox" id="stu_<%= s.id %>" name="student_ids" value="<%= s.id %>">
+                <label for="stu_<%= s.id %>"><%= s.name %> <span style="color:var(--text-muted); font-size:12px;">(<%= s.student_code %><%= s.course ? ' — ' + s.course : '' %>)</span></label>
+              </div>
+            <% }) %>
+            <% if (students.length === 0) { %><div class="hint">No students in the system yet.</div><% } %>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Assign task</button>
+        <a href="/tasks" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    function toggleScope() {
+      const scope = document.querySelector('input[name="scope_type"]:checked').value;
+      document.getElementById('batchBlock').style.display = scope === 'batch' ? 'grid' : 'none';
+      document.getElementById('studentsBlock').style.display = scope === 'students' ? 'block' : 'none';
+    }
+    function filterStudents() {
+      const q = document.getElementById('studentSearch').value.toLowerCase();
+      document.querySelectorAll('.student-row').forEach(row => {
+        row.style.display = row.dataset.search.includes(q) ? 'flex' : 'none';
+      });
+    }
+    toggleScope();
+  </script>
+
+<%- include('partials/footer') %>

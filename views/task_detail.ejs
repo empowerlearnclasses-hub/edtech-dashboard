@@ -1,0 +1,92 @@
+<%- include('partials/header', { title: task.title, user, active: 'tasks' }) %>
+
+  <div class="breadcrumb"><a href="/tasks">Tasks</a> / <%= task.title %></div>
+  <div class="page-header">
+    <div>
+      <h1><%= task.title %></h1>
+      <p class="subtitle">
+        Assigned to <%= task.assigned_to_name || '—' %> · Created by <%= task.created_by_name || '—' %>
+        <%= task.due_date ? ' · Due ' + task.due_date : '' %>
+      </p>
+    </div>
+    <% if (canManage) { %>
+      <form method="POST" action="/tasks/<%= task.id %>/delete" onsubmit="return confirm('Delete this task and all its progress? This cannot be undone.');">
+        <button type="submit" class="btn btn-danger">Delete Task</button>
+      </form>
+    <% } %>
+  </div>
+
+  <% if (task.description) { %>
+  <div class="card card-pad" style="margin-bottom: 20px;">
+    <div class="detail-item"><div class="k">Description</div><div class="v" style="font-weight:400;"><%= task.description %></div></div>
+  </div>
+  <% } %>
+
+  <% if (task.scope_type === 'general') { %>
+    <div class="card card-pad" style="margin-bottom: 20px; text-align:center;">
+      <% if (task.status === 'done') { %>
+        <div style="font-size:32px; margin-bottom:8px;">✅</div>
+        <p style="margin: 0 0 16px; color: var(--text-muted);">Marked done<%= task.completed_at ? ' on ' + task.completed_at.slice(0,10) : '' %>.</p>
+        <% if (canAct) { %>
+        <form method="POST" action="/tasks/<%= task.id %>/complete">
+          <input type="hidden" name="mark" value="undo">
+          <button type="submit" class="btn btn-outline">Mark as Pending again</button>
+        </form>
+        <% } %>
+      <% } else { %>
+        <div style="font-size:32px; margin-bottom:8px;">⏳</div>
+        <p style="margin: 0 0 16px; color: var(--text-muted);">Not done yet.</p>
+        <% if (canAct) { %>
+        <form method="POST" action="/tasks/<%= task.id %>/complete">
+          <button type="submit" class="btn btn-primary">Mark as Done</button>
+        </form>
+        <% } %>
+      <% } %>
+    </div>
+  <% } else { %>
+    <% const total = studentRows.length; const done = studentRows.filter(s => s.status === 'done').length; %>
+    <div class="card card-pad" style="margin-bottom: 20px;">
+      <div style="display:flex; justify-content: space-between; font-size:12.5px; color:var(--text-muted); margin-bottom:4px;">
+        <span><%= task.scope_type === 'batch' ? 'Batch: ' + (task.batch_name || '—') : 'Specific students' %></span>
+        <span><%= done %> / <%= total %> done</span>
+      </div>
+      <div class="progress-bar"><div class="fill" style="width: <%= total > 0 ? Math.round((done/total)*100) : 0 %>%;"></div></div>
+    </div>
+
+    <% if (studentRows.length === 0) { %>
+      <div class="card"><div class="empty-state"><div class="big">🎓</div>No students currently match this task's scope.</div></div>
+    <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Student ID</th><th>Name</th><th>Batch</th><th>Status</th><th class="wrap">Notes</th><th></th></tr></thead>
+        <tbody>
+          <% studentRows.forEach(s => { %>
+          <tr>
+            <td data-label="Student ID"><%= s.student_code %></td>
+            <td data-label="Name"><strong><%= s.name %></strong></td>
+            <td data-label="Batch"><%= s.batch_name || '—' %></td>
+            <td data-label="Status">
+              <% if (s.status === 'done') { %><span class="badge badge-green">Done</span><% } else { %><span class="badge badge-red">Pending</span><% } %>
+            </td>
+            <td class="wrap" data-label="Notes"><%= s.notes || '—' %></td>
+            <td>
+              <% if (canAct) { %>
+              <form method="POST" action="/tasks/<%= task.id %>/students/<%= s.id %>/complete" style="display:flex; gap:6px;">
+                <% if (s.status === 'done') { %>
+                  <input type="hidden" name="mark" value="undo">
+                  <button type="submit" class="btn btn-sm btn-outline">Undo</button>
+                <% } else { %>
+                  <button type="submit" class="btn btn-sm btn-primary">Mark Done</button>
+                <% } %>
+              </form>
+              <% } %>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  <% } %>
+
+<%- include('partials/footer') %>

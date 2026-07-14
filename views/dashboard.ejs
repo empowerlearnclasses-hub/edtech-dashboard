@@ -1,0 +1,160 @@
+<%- include('partials/header', { title: 'Dashboard', user, active: 'dashboard', canViewStudents, canViewFees }) %>
+
+  <div class="page-header">
+    <div>
+      <h1>Welcome, <%= user.name.split(' ')[0] %></h1>
+      <p class="subtitle">
+        <% if (user.role === 'sales_staff') { %>
+          Overview of the students you've admitted and their fee status.
+        <% } else if (user.role === 'admin') { %>
+          Institution-wide admissions and fee collection overview.
+        <% } else { %>
+          Overview based on your assigned access rights.
+        <% } %>
+      </p>
+    </div>
+    <% if (canViewStudents) { %><a href="/students/new" class="btn btn-primary">+ Add Student</a><% } %>
+  </div>
+
+  <form class="filters-bar" method="GET" action="/">
+    <div class="form-group">
+      <label>Joined from</label>
+      <input type="date" name="from" value="<%= filters.from %>">
+    </div>
+    <div class="form-group">
+      <label>Joined to</label>
+      <input type="date" name="to" value="<%= filters.to %>">
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <select name="status">
+        <option value="active" <%= filters.status === 'active' ? 'selected' : '' %>>Active only</option>
+        <option value="dropout" <%= filters.status === 'dropout' ? 'selected' : '' %>>Dropout only</option>
+        <option value="all" <%= filters.status === 'all' ? 'selected' : '' %>>Active + Dropout</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-outline">Filter</button>
+    <% if (filters.from || filters.to || filters.status !== 'active') { %><a href="/" class="btn btn-outline">Clear</a><% } %>
+    <span class="hint" style="margin-left: 4px;">Student counts &amp; Fee Allocated are filtered by Joined Date. Fee Collected is filtered by the date each payment was recorded. Dropout enrollments are excluded by default so they don't inflate what's actually still owed.</span>
+  </form>
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="label">Total Students</div>
+      <div class="value"><%= summary.student_count %></div>
+      <div class="sub"><%= user.role === 'sales_staff' ? 'Admitted by you' : 'Across the institution' %></div>
+    </div>
+    <% if (feePerms.viewAllocated) { %>
+    <div class="stat-card ochre">
+      <div class="label">Total Fee Allocated</div>
+      <div class="value">₹<%= summary.total_fee.toLocaleString('en-IN') %></div>
+    </div>
+    <% } %>
+    <% if (feePerms.viewCollected) { %>
+    <div class="stat-card green">
+      <div class="label">Fee Collected</div>
+      <div class="value">₹<%= summary.total_collected.toLocaleString('en-IN') %></div>
+    </div>
+    <% } %>
+    <% if (feePerms.viewDue) { %>
+    <div class="stat-card red">
+      <div class="label">Fee Pending</div>
+      <div class="value">₹<%= summary.total_pending.toLocaleString('en-IN') %></div>
+    </div>
+    <% } %>
+    <% if (feePerms.viewDuePercentage) { %>
+    <div class="stat-card red">
+      <div class="label">Fee Pending %</div>
+      <div class="value"><%= summary.pending_percentage %>%</div>
+    </div>
+    <% } %>
+  </div>
+
+  <div class="section-flex">
+    <div class="col" style="flex: 2 1 560px;">
+      <div class="card">
+        <div class="card-pad" style="padding-bottom: 10px;">
+          <strong>Collection ageing</strong>
+          <div class="hint" style="margin-top:2px;">Due days counted from each student's Joined Date to today.</div>
+        </div>
+        <% if (collectionAgeing.length === 0) { %>
+          <div class="empty-state">
+            <div class="big">🎓</div>
+            No students match the current filter.
+            <% if (canViewStudents) { %><br><a href="/students/new">Add your first student</a><% } %>
+          </div>
+        <% } else { %>
+        <div class="table-wrap" style="border: none; border-top: 1px solid var(--border); border-radius: 0 0 8px 8px; box-shadow:none;">
+          <table>
+            <thead><tr>
+              <th>Student ID</th><th>Name</th><th>Course</th><th>Status</th><th>Batch</th>
+              <% if (feePerms.viewAllocated) { %><th class="num">Fee</th><% } %>
+              <% if (feePerms.viewCollected) { %><th class="num">Collected</th><% } %>
+              <% if (feePerms.viewDue) { %><th class="num">Pending</th><% } %>
+              <% if (feePerms.viewDuePercentage) { %><th class="num">Due %</th><% } %>
+              <% if (feePerms.viewAgeing) { %><th class="num">Due Days</th><% } %>
+            </tr></thead>
+            <tbody>
+              <% collectionAgeing.forEach(s => { %>
+              <tr onclick="window.location='/enrollments/<%= s.id %>'" style="cursor:pointer;">
+                <td data-label="Student ID"><%= s.student_code %></td>
+                <td data-label="Name"><strong><%= s.name %></strong></td>
+                <td data-label="Course"><%= s.course || '—' %></td>
+                <td data-label="Status"><% if (s.status === 'dropout') { %><span class="badge badge-gray">Dropout</span><% } else { %><span class="badge badge-green">Active</span><% } %></td>
+                <td data-label="Batch"><%= s.batch_name || '—' %></td>
+                <% if (feePerms.viewAllocated) { %><td class="num" data-label="Fee">₹<%= s.total_fee.toLocaleString('en-IN') %></td><% } %>
+                <% if (feePerms.viewCollected) { %><td class="num" data-label="Collected">₹<%= s.fee_collected.toLocaleString('en-IN') %></td><% } %>
+                <% if (feePerms.viewDue) { %><td class="num" data-label="Pending">₹<%= s.pending_fee.toLocaleString('en-IN') %></td><% } %>
+                <% if (feePerms.viewDuePercentage) { %>
+                <td class="num" data-label="Due %">
+                  <% if (s.pending_fee > 0) { %><span class="badge badge-red"><%= s.due_percentage %>%</span>
+                  <% } else { %><span class="badge badge-green">0%</span><% } %>
+                </td>
+                <% } %>
+                <% if (feePerms.viewAgeing) { %><td class="num" data-label="Due Days"><%= s.due_days === null ? '—' : s.due_days + 'd' %></td><% } %>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <% } %>
+      </div>
+    </div>
+
+    <% if (user.role === 'admin') { %>
+    <div class="col" style="flex: 1 1 360px;">
+      <div class="card">
+        <div class="card-pad" style="padding-bottom: 10px;"><strong>Sales Team performance</strong></div>
+        <% if (staffLeaderboard.length === 0) { %>
+          <div class="empty-state"><div class="big">👥</div>No Sales Team accounts yet.</div>
+        <% } else { %>
+        <div class="table-wrap" style="border: none; border-top: 1px solid var(--border); border-radius: 0 0 8px 8px; box-shadow:none;">
+          <table>
+            <thead><tr>
+              <th>Sales Team</th><th class="num">Students</th><th class="num">Allocated</th>
+              <th class="num">Collected</th><th class="num">Due</th><th class="num">Due %</th>
+            </tr></thead>
+            <tbody>
+              <% staffLeaderboard.forEach(r => { %>
+              <tr>
+                <td data-label="Sales Team"><%= r.name %></td>
+                <td class="num" data-label="Students"><%= r.student_count %></td>
+                <td class="num" data-label="Allocated">₹<%= r.total_fee.toLocaleString('en-IN') %></td>
+                <td class="num" data-label="Collected">₹<%= r.total_collected.toLocaleString('en-IN') %></td>
+                <td class="num" data-label="Due">₹<%= r.pending.toLocaleString('en-IN') %></td>
+                <td class="num" data-label="Due %">
+                  <% if (r.pending > 0) { %><span class="badge badge-red"><%= r.due_percentage %>%</span>
+                  <% } else { %><span class="badge badge-green">0%</span><% } %>
+                </td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <% } %>
+      </div>
+    </div>
+    <% } %>
+  </div>
+
+<%- include('partials/footer') %>

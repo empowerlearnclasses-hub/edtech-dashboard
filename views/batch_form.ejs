@@ -1,0 +1,61 @@
+<%- include('partials/header', { title: isEdit ? 'Edit Batch' : 'New Batch', user, active: 'batches' }) %>
+
+  <div class="breadcrumb"><a href="/batches">Batches</a> / <%= isEdit ? 'Edit' : 'New' %></div>
+  <div class="page-header">
+    <div>
+      <h1><%= isEdit ? 'Edit batch' : 'Create a new batch' %></h1>
+      <p class="subtitle">Every day in the date range starts out as a Working day — mark specific days as Leave from the batch calendar afterward.</p>
+    </div>
+  </div>
+
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+  <div class="card card-pad" style="max-width: 640px;">
+    <form method="POST" action="<%= isEdit ? '/batches/' + formValues.id : '/batches' %>">
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Batch name <span class="req">*</span></label>
+          <input type="text" name="name" required placeholder="e.g. Data Analytics – July 2026" value="<%= formValues.name || '' %>">
+        </div>
+        <div class="form-group">
+          <label>Start date <span class="req">*</span></label>
+          <input type="date" name="start_date" required value="<%= formValues.start_date || '' %>">
+        </div>
+        <div class="form-group">
+          <label>End date <span class="req">*</span></label>
+          <input type="date" name="end_date" required value="<%= formValues.end_date || '' %>">
+        </div>
+        <div class="form-group">
+          <label>Faculty</label>
+          <% if (faculty.length > 0) { %>
+          <select name="faculty_id">
+            <option value="">No faculty assigned yet</option>
+            <% faculty.forEach(f => { %>
+              <option value="<%= f.id %>" <%= String(formValues.faculty_id) === String(f.id) ? 'selected' : '' %>>
+                <%= f.name %><%= f.designation ? ' — ' + f.designation : '' %> (<%= roleLabel(f.role) %>)
+              </option>
+            <% }) %>
+          </select>
+          <div class="hint">Whoever is selected here will automatically be able to see this batch's calendar, even without broader Batch access. Set under <a href="/users">Staff & Access</a>.</div>
+          <% } else { %>
+          <div class="alert alert-error" style="margin:0;">No staff accounts exist yet. <a href="/users/new">Create one</a> to assign as faculty.</div>
+          <% } %>
+        </div>
+        <div class="form-group full">
+          <label>Notes</label>
+          <textarea name="notes"><%= formValues.notes || '' %></textarea>
+        </div>
+      </div>
+
+      <% if (isEdit) { %>
+      <div class="hint" style="margin-top:12px;">Extending the end date will add new Working days to the calendar automatically. Shrinking it won't remove days already recorded — delete those manually from the calendar if needed.</div>
+      <% } %>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary"><%= isEdit ? 'Save changes' : 'Create batch' %></button>
+        <a href="/batches" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+<%- include('partials/footer') %>

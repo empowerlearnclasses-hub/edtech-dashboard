@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title + ' · Empower Learn' : 'Empower Learn' %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<% if (typeof user !== 'undefined' && user) { %>
+<div class="navbar">
+  <div class="brand"><span class="mark">E</span> Empower Learn</div>
+  <nav>
+    <% if (user.role !== 'faculty') { %>
+      <a href="/" class="<%= typeof active !== 'undefined' && active === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+    <% } %>
+    <% if (typeof navShowStudents !== 'undefined' && navShowStudents) { %>
+      <a href="/students" class="<%= typeof active !== 'undefined' && active === 'students' ? 'active' : '' %>">Students</a>
+    <% } %>
+    <% if (typeof navShowFees !== 'undefined' && navShowFees) { %>
+      <a href="/fees" class="<%= typeof active !== 'undefined' && active === 'fees' ? 'active' : '' %>">Fee Collection</a>
+    <% } %>
+    <a href="/tasks" class="<%= typeof active !== 'undefined' && active === 'tasks' ? 'active' : '' %>">Tasks</a>
+    <% if (typeof navShowBatches !== 'undefined' && navShowBatches) { %>
+      <a href="/batches" class="<%= typeof active !== 'undefined' && active === 'batches' ? 'active' : '' %>">Batches</a>
+    <% } %>
+    <% if (user.role === 'admin') { %>
+      <a href="/users" class="<%= typeof active !== 'undefined' && active === 'users' ? 'active' : '' %>">Staff & Access</a>
+      <a href="/settings/company" class="<%= typeof active !== 'undefined' && active === 'settings' ? 'active' : '' %>">Settings</a>
+    <% } %>
+  </nav>
+  <div class="user-area">
+    <span><%= user.name %><%= user.designation ? ' · ' + user.designation : '' %></span>
+    <span class="role-badge"><%= roleLabel(user.role) %></span>
+    <a href="/change-password" style="color: rgba(255,255,255,0.75)">Password</a>
+    <form action="/logout" method="POST"><button class="linklike" type="submit">Log out</button></form>
+  </div>
+</div>
+<% } %>
+<div class="container">

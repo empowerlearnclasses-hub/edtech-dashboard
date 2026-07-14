@@ -1,0 +1,123 @@
+<%- include('partials/header', { title: batch.name, user, active: 'batches' }) %>
+
+  <div class="breadcrumb"><a href="/batches">Batches</a> / <%= batch.name %></div>
+  <div class="page-header">
+    <div>
+      <h1><%= batch.name %></h1>
+      <p class="subtitle">
+        <%= (batch.faculty_account_name || batch.faculty_name) ? 'Faculty: ' + (batch.faculty_account_name || batch.faculty_name) + ' · ' : '' %>
+        <%= batch.start_date || '—' %> to <%= batch.end_date || '—' %> · <%= studentCount %> student<%= studentCount === 1 ? '' : 's' %>
+      </p>
+    </div>
+    <% if (canManage) { %>
+    <div style="display:flex; gap:8px;">
+      <a href="/batches/<%= batch.id %>/edit" class="btn btn-outline">Edit Batch</a>
+      <form method="POST" action="/batches/<%= batch.id %>/delete" onsubmit="return confirm('Delete this batch and its entire calendar? Students assigned to it must be moved first.');">
+        <button type="submit" class="btn btn-danger">Delete</button>
+      </form>
+    </div>
+    <% } %>
+  </div>
+
+  <% if (batch.notes) { %>
+  <div class="card card-pad" style="margin-bottom: 18px;">
+    <div class="detail-item"><div class="k">Notes</div><div class="v" style="font-weight:400;"><%= batch.notes %></div></div>
+  </div>
+  <% } %>
+
+  <% if (classStats.total_working_days > 0) { %>
+  <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px,1fr));">
+    <div class="stat-card"><div class="label">Classes Completed</div><div class="value"><%= classStats.classes_completed %> / <%= classStats.total_working_days %></div></div>
+    <div class="stat-card" style="border-left-color: var(--teal);"><div class="label">Recordings Uploaded</div><div class="value"><%= classStats.recordings_uploaded %></div></div>
+    <div class="stat-card <%= classStats.recordings_pending > 0 ? 'red' : '' %>"><div class="label">Recording Pending</div><div class="value"><%= classStats.recordings_pending %></div><% if (classStats.recordings_pending > 0) { %><div class="sub">Class done, recording not uploaded yet</div><% } %></div>
+  </div>
+  <% } %>
+
+  <div class="card card-pad">
+    <div class="calendar-nav">
+      <a href="/batches/<%= batch.id %>?month=<%= prevMonth %>" class="btn btn-sm btn-outline">← Prev</a>
+      <span class="month-label"><%= monthLabel %></span>
+      <a href="/batches/<%= batch.id %>?month=<%= nextMonth %>" class="btn btn-sm btn-outline">Next →</a>
+    </div>
+
+    <div class="calendar-legend">
+      <span><i class="dot working"></i>Working</span>
+      <span><i class="dot leave"></i>Leave</span>
+      <span><i class="dot holiday"></i>Holiday</span>
+      <span><i class="dot recording-pending"></i>Class done, recording pending</span>
+      <span><i class="dot recorded"></i>Class done + recorded</span>
+    </div>
+
+    <div class="calendar-grid">
+      <div class="dow">Sun</div><div class="dow">Mon</div><div class="dow">Tue</div><div class="dow">Wed</div>
+      <div class="dow">Thu</div><div class="dow">Fri</div><div class="dow">Sat</div>
+
+      <% weeks.forEach(week => { week.forEach(cell => { %>
+        <% 
+          const s = cell.session;
+          const dayClasses = [];
+          if (!cell.inMonth) dayClasses.push('out-of-month');
+          if (!cell.inRange) dayClasses.push('out-of-range');
+          else if (s) {
+            dayClasses.push(s.status);
+            if (s.status === 'working' && s.class_completed) {
+              dayClasses.push(s.recording_uploaded ? 'class-recorded' : 'class-recording-pending');
+            }
+          }
+          if (cell.date === todayISO) dayClasses.push('is-today');
+        %>
+        <div class="cal-day <%= dayClasses.join(' ') %>">
+          <div class="num"><%= cell.day %><% if (cell.date === todayISO) { %> <span class="today-tag">Today</span><% } %></div>
+          <% if (cell.inRange && s) { %>
+            <% if (s.status === 'holiday') { %>
+              <span class="badge badge-ochre">Holiday</span>
+            <% } else if (s.status === 'leave') { %>
+              <span class="badge badge-gray">Leave</span>
+            <% } else if (s.class_completed && s.recording_uploaded) { %>
+              <span class="badge badge-teal">Recorded</span>
+            <% } else if (s.class_completed) { %>
+              <span class="badge badge-warn">Recording pending</span>
+            <% } else { %>
+              <span class="badge badge-green">Working</span>
+            <% } %>
+            <div class="cal-actions">
+              <% if (s.zoom_link) { %>
+                <button type="button" onclick="copyLink('<%= s.zoom_link.replace(/'/g, "\\'") %>', this)">Copy Link</button>
+              <% } %>
+              <% if (canManage) { %>
+                <a href="/batches/<%= batch.id %>/sessions/<%= cell.date %>/edit">Edit</a>
+              <% } %>
+            </div>
+            <% if (canMarkStatus && s.status === 'working') { %>
+            <div class="cal-actions">
+              <form method="POST" action="/batches/<%= batch.id %>/sessions/<%= cell.date %>/class-status">
+                <% if (s.class_completed) { %><input type="hidden" name="mark" value="undo"><% } %>
+                <button type="submit"><%= s.class_completed ? 'Undo class' : 'Mark class done' %></button>
+              </form>
+              <% if (s.class_completed) { %>
+              <form method="POST" action="/batches/<%= batch.id %>/sessions/<%= cell.date %>/recording-status">
+                <% if (s.recording_uploaded) { %><input type="hidden" name="mark" value="undo"><% } %>
+                <button type="submit"><%= s.recording_uploaded ? 'Undo recording' : 'Mark recorded' %></button>
+              </form>
+              <% } %>
+            </div>
+            <% } %>
+          <% } else if (canManage && cell.inRange) { %>
+            <div class="cal-actions"><a href="/batches/<%= batch.id %>/sessions/<%= cell.date %>/edit">Edit</a></div>
+          <% } %>
+        </div>
+      <% }) }) %>
+    </div>
+  </div>
+
+  <script>
+    function copyLink(link, btn) {
+      navigator.clipboard.writeText(link).then(() => {
+        const original = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = original; }, 1500);
+      });
+    }
+  </script>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,83 @@
+<%- include('partials/header', { title: student.name, user, active: 'students' }) %>
+
+  <div class="breadcrumb"><a href="/students">Students</a> / <%= student.person_code %></div>
+  <div class="page-header">
+    <div>
+      <h1><%= student.name %></h1>
+      <p class="subtitle"><%= student.person_code %> · <%= enrollments.length %> course<%= enrollments.length === 1 ? '' : 's' %></p>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <% if (canEditStudent) { %><a href="/students/<%= student.id %>/edit" class="btn btn-outline">Edit profile</a><% } %>
+      <% if (canEditStudent) { %><a href="/students/<%= student.id %>/enrollments/new" class="btn btn-primary">+ Add another course</a><% } %>
+      <% if (user.role === 'admin') { %>
+        <form method="POST" action="/students/<%= student.id %>/delete" onsubmit="return confirm('Delete this student, ALL their enrollments, and all linked fee/invoice/receipt records? This cannot be undone.');">
+          <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-pad">
+      <div class="form-section-title" style="margin-top:0;">Contact & background</div>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="k">WhatsApp</div><div class="v"><%= student.phone_whatsapp || '—' %></div></div>
+        <div class="detail-item"><div class="k">Phone (Call)</div><div class="v"><%= student.phone_call || '—' %></div></div>
+        <div class="detail-item"><div class="k">Mail ID</div><div class="v"><%= student.email || '—' %></div></div>
+        <div class="detail-item"><div class="k">Location</div><div class="v"><%= student.location || '—' %></div></div>
+        <div class="detail-item"><div class="k">District</div><div class="v"><%= student.district || '—' %></div></div>
+        <div class="detail-item"><div class="k">State</div><div class="v"><%= student.state || '—' %></div></div>
+        <div class="detail-item"><div class="k">Pincode</div><div class="v"><%= student.pincode || '—' %></div></div>
+        <div class="detail-item"><div class="k">Job Role</div><div class="v"><%= student.job_role || '—' %></div></div>
+        <div class="detail-item"><div class="k">Job / Business Name</div><div class="v"><%= student.job_business_name || '—' %></div></div>
+        <div class="detail-item"><div class="k">Job Location</div><div class="v"><%= student.job_location || '—' %></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-header" style="margin-bottom: 12px;">
+    <div><h1 style="font-size:18px;">Courses (Enrollments)</h1><p class="subtitle">Each course has its own batch, fee, Sales Team credit, and fee/invoice/receipt history — click one to open it.</p></div>
+  </div>
+
+  <% if (enrollments.length === 0) { %>
+    <div class="card"><div class="empty-state">
+      <div class="big">📚</div>
+      No courses recorded yet.
+      <% if (canEditStudent) { %><br><a href="/students/<%= student.id %>/enrollments/new">Add their first course</a><% } %>
+    </div></div>
+  <% } else { %>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Course</th><th>Batch</th><th>Sales Team</th><th>Status</th><th>Joined</th>
+        <% if (feePerms.viewAllocated) { %><th class="num">Fee</th><% } %>
+        <% if (feePerms.viewCollected) { %><th class="num">Collected</th><% } %>
+        <% if (feePerms.viewDue) { %><th class="num">Pending</th><% } %>
+      </tr></thead>
+      <tbody>
+        <% enrollments.forEach(e => { %>
+        <tr onclick="window.location='/enrollments/<%= e.id %>'" style="cursor:pointer;">
+          <td data-label="Course"><strong><%= e.course || '—' %></strong></td>
+          <td data-label="Batch"><% if (e.batch_name) { %><a href="/batches/<%= e.batch_id %>" onclick="event.stopPropagation()"><%= e.batch_name %></a><% } else { %>—<% } %></td>
+          <td data-label="Sales Team"><%= e.sales_staff_name || '—' %></td>
+          <td data-label="Status">
+            <% if (e.status === 'dropout') { %><span class="badge badge-gray">Dropout</span><% } else { %><span class="badge badge-green">Active</span><% } %>
+          </td>
+          <td data-label="Joined"><%= e.joined_date || '—' %></td>
+          <% if (feePerms.viewAllocated) { %><td class="num" data-label="Fee">₹<%= e.total_fee.toLocaleString('en-IN') %></td><% } %>
+          <% if (feePerms.viewCollected) { %><td class="num" data-label="Collected">₹<%= e.fee_collected.toLocaleString('en-IN') %></td><% } %>
+          <% if (feePerms.viewDue) { %>
+          <td class="num" data-label="Pending">
+            <% if (e.status === 'dropout') { %><span class="badge badge-gray">excluded</span>
+            <% } else if (e.pending_fee > 0) { %><span class="badge badge-red">₹<%= e.pending_fee.toLocaleString('en-IN') %></span>
+            <% } else { %><span class="badge badge-green">Cleared</span><% } %>
+          </td>
+          <% } %>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+<%- include('partials/footer') %>

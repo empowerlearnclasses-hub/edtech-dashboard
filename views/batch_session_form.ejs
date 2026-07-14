@@ -1,0 +1,63 @@
+<%- include('partials/header', { title: date, user, active: 'batches' }) %>
+
+  <div class="breadcrumb"><a href="/batches">Batches</a> / <a href="/batches/<%= batch.id %>"><%= batch.name %></a> / <%= date %></div>
+  <div class="page-header">
+    <div>
+      <h1><%= date %></h1>
+      <p class="subtitle"><%= batch.name %></p>
+    </div>
+  </div>
+
+  <div class="card card-pad" style="max-width: 520px;">
+    <form method="POST" action="/batches/<%= batch.id %>/sessions/<%= date %>">
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Status</label>
+          <div class="checkbox-row">
+            <input type="radio" id="statusWorking" name="status" value="working" onchange="toggleZoomLink()" <%= (!session.status || session.status === 'working') ? 'checked' : '' %>>
+            <label for="statusWorking">Working day — class is on</label>
+          </div>
+          <div class="checkbox-row" style="margin-top:8px;">
+            <input type="radio" id="statusLeave" name="status" value="leave" onchange="toggleZoomLink()" <%= session.status === 'leave' ? 'checked' : '' %>>
+            <label for="statusLeave">Leave — no class today (batch-specific, e.g. faculty unavailable)</label>
+          </div>
+          <div class="checkbox-row" style="margin-top:8px;">
+            <input type="radio" id="statusHoliday" name="status" value="holiday" onchange="toggleZoomLink()" <%= session.status === 'holiday' ? 'checked' : '' %>>
+            <label for="statusHoliday">Holiday — institution-wide day off (e.g. public holiday, festival)</label>
+          </div>
+        </div>
+        <div class="form-group full">
+          <label>Zoom link</label>
+          <input type="text" name="zoom_link" id="zoomLinkInput" placeholder="Paste the meeting link for this session" value="<%= session.zoom_link || '' %>">
+          <div class="hint" id="zoomLinkHint">Paste a link already created in Zoom — the Sales Team and other staff can copy it from the calendar to share with students.</div>
+        </div>
+        <div class="form-group full">
+          <label>Notes</label>
+          <textarea name="notes" placeholder="e.g. topic covered, any changes"><%= session.notes || '' %></textarea>
+        </div>
+      </div>
+
+      <script>
+        function toggleZoomLink() {
+          const isWorking = document.getElementById('statusWorking').checked;
+          const input = document.getElementById('zoomLinkInput');
+          const hint = document.getElementById('zoomLinkHint');
+          input.disabled = !isWorking;
+          if (!isWorking) {
+            input.value = '';
+            hint.textContent = "There's no class on a Leave or Holiday day, so there's no Zoom link to set.";
+          } else {
+            hint.textContent = 'Paste a link already created in Zoom — the Sales Team and other staff can copy it from the calendar to share with students.';
+          }
+        }
+        toggleZoomLink();
+      </script>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a href="/batches/<%= batch.id %>?month=<%= date.slice(0,7) %>" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+<%- include('partials/footer') %>

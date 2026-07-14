@@ -1,0 +1,40 @@
+<%- include('partials/header', { title: 'Edit Receipt', user, active: 'students' }) %>
+
+  <div class="breadcrumb"><a href="/enrollments/<%= student.id %>"><%= student.name %></a> / <a href="/receipts/<%= receipt.id %>"><%= receipt.receipt_number %></a> / Edit</div>
+  <div class="page-header">
+    <div>
+      <h1>Edit <%= receipt.receipt_number %></h1>
+      <p class="subtitle">For <%= student.name %> (<%= student.student_code %>)</p>
+    </div>
+  </div>
+
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+  <div class="card card-pad" style="max-width: 560px;">
+    <form method="POST" action="/receipts/<%= receipt.id %>">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Amount (₹) <span class="req">*</span></label>
+          <input type="number" step="0.01" min="0" name="amount" required value="<%= receipt.amount %>">
+        </div>
+        <div class="form-group">
+          <label>Receipt Date <span class="req">*</span></label>
+          <input type="date" name="receipt_date" required value="<%= receipt.receipt_date %>">
+        </div>
+        <div class="form-group">
+          <label>Payment Mode</label>
+          <input type="text" name="payment_mode" placeholder="e.g. Cash, UPI, Bank Transfer" value="<%= receipt.payment_mode || '' %>">
+        </div>
+        <div class="form-group full">
+          <label>Notes</label>
+          <textarea name="notes"><%= receipt.notes || '' %></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save changes</button>
+        <a href="/receipts/<%= receipt.id %>" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+<%- include('partials/footer') %>

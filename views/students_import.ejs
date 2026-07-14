@@ -1,0 +1,48 @@
+<%- include('partials/header', { title: 'Import Students', user, active: 'students' }) %>
+
+  <div class="breadcrumb"><a href="/students">Students</a> / Import</div>
+  <div class="page-header">
+    <div>
+      <h1>Import students from Excel</h1>
+      <p class="subtitle">Upload a .xlsx file with the same columns as the export. Rows with a Student ID that already exists get updated; everything else is created new.</p>
+    </div>
+  </div>
+
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+  <% if (result) { %>
+  <div class="card card-pad" style="margin-bottom: 20px;">
+    <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); margin-bottom: <%= result.errors.length ? '16px' : '0' %>;">
+      <div class="stat-card green"><div class="label">Created</div><div class="value"><%= result.created %></div></div>
+      <div class="stat-card ochre"><div class="label">Updated</div><div class="value"><%= result.updated %></div></div>
+      <div class="stat-card red"><div class="label">Skipped</div><div class="value"><%= result.skipped %></div></div>
+    </div>
+    <% if (result.errors.length > 0) { %>
+      <div class="form-section-title" style="margin-top:0;">Notes on this import</div>
+      <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: var(--text-muted); line-height: 1.8;">
+        <% result.errors.forEach(e => { %><li><%= e %></li><% }) %>
+      </ul>
+    <% } %>
+  </div>
+  <% } %>
+
+  <div class="card card-pad" style="max-width: 560px;">
+    <form method="POST" action="/students/import" enctype="multipart/form-data">
+      <div class="form-group full" style="margin-bottom: 16px;">
+        <label>Excel file (.xlsx)</label>
+        <input type="file" name="file" accept=".xlsx" required>
+      </div>
+      <div class="hint" style="margin-bottom: 16px;">
+        Required columns: <strong>Student ID</strong> (leave blank to create a new person), <strong>Name</strong>, <strong>Sales Team</strong> (must match an existing account name exactly), <strong>Joined Date</strong> (YYYY-MM-DD), <strong>Course</strong>.
+        <br><strong>If the Student ID matches an existing person, that row adds a new course (enrollment) to them instead of creating a duplicate profile</strong> — this is the easiest way to bulk-import a second course for people who already have a Student ID.
+        Optional: Phone (WhatsApp), Phone (Call), Mail ID, Location, District, State, Pincode, Job Role, Job/Business Name, Job Location, Batch (must match an existing batch name), Course, Total Fee, Remarks.
+        The easiest way to get this layout right is to <a href="/students/export">export your current students</a> first and edit that file.
+      </div>
+      <div class="form-actions" style="margin-top: 0;">
+        <button type="submit" class="btn btn-primary">Import</button>
+        <a href="/students" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+<%- include('partials/footer') %>

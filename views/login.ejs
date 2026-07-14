@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in · Empower Learn</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="mark">E</div>
+      <h1>Empower Learn</h1>
+      <p class="subtitle">Student admissions & fee collection dashboard</p>
+
+      <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+      <form method="POST" action="/login">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" name="username" required autofocus>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" name="password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Sign in</button>
+      </form>
+
+      <div class="login-hint">
+        First time setup? Default admin login is <strong>admin</strong> / <strong>admin123</strong>.
+        Please change this password immediately after logging in, and create staff accounts from Staff & Access.
+      </div>
+    </div>
+  </div>
+</body>
+</html>

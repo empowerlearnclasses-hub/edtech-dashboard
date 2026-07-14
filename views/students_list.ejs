@@ -1,0 +1,119 @@
+<%- include('partials/header', { title: 'Students', user, active: 'students' }) %>
+
+  <div class="page-header">
+    <div>
+      <h1>Student Master Data</h1>
+      <p class="subtitle"><%= students.length %> student<%= students.length === 1 ? '' : 's' %> <%= user.role === 'sales_staff' ? 'assigned to you' : 'in the institution' %> · one Student ID per person, however many courses they've taken</p>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap: wrap;">
+      <a href="/students/export?q=<%= encodeURIComponent(filters.q) %>&batch_id=<%= filters.batch_id %>&staff_id=<%= filters.staff_id %>&course=<%= encodeURIComponent(filters.course) %>" class="btn btn-outline">Export</a>
+      <% if (canEdit) { %>
+        <a href="/courses" class="btn btn-outline">Courses</a>
+        <a href="/students/import" class="btn btn-outline">Import</a>
+        <a href="/students/new" class="btn btn-primary">+ Add Student</a>
+      <% } %>
+    </div>
+  </div>
+
+  <form class="filters-bar" method="GET" action="/students">
+    <div class="form-group">
+      <label>Search</label>
+      <input type="text" name="q" placeholder="Name, ID, phone, email" value="<%= filters.q %>">
+    </div>
+    <div class="form-group">
+      <label>Batch</label>
+      <select name="batch_id">
+        <option value="">All batches</option>
+        <% batches.forEach(b => { %>
+          <option value="<%= b.id %>" <%= String(filters.batch_id) === String(b.id) ? 'selected' : '' %>><%= b.name %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Course</label>
+      <select name="course">
+        <option value="">All courses</option>
+        <% courses.forEach(c => { %>
+          <option value="<%= c %>" <%= filters.course === c ? 'selected' : '' %>><%= c %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <select name="status">
+        <option value="" <%= filters.status === '' ? 'selected' : '' %>>Active + Dropout</option>
+        <option value="active" <%= filters.status === 'active' ? 'selected' : '' %>>Active only</option>
+        <option value="dropout" <%= filters.status === 'dropout' ? 'selected' : '' %>>Dropout only</option>
+      </select>
+    </div>
+    <% if (staffList.length > 0) { %>
+    <div class="form-group">
+      <label>Sales Team</label>
+      <select name="staff_id">
+        <option value="">All staff</option>
+        <% staffList.forEach(s => { %>
+          <option value="<%= s.id %>" <%= String(filters.staff_id) === String(s.id) ? 'selected' : '' %>><%= s.name %></option>
+        <% }) %>
+      </select>
+    </div>
+    <% } %>
+    <button type="submit" class="btn btn-outline">Filter</button>
+    <% if (filters.q || filters.batch_id || filters.staff_id || filters.course || filters.status) { %><a href="/students" class="btn btn-outline">Clear</a><% } %>
+  </form>
+
+  <% if (feePerms.viewAllocated || feePerms.viewCollected || feePerms.viewDue) { %>
+  <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); margin-bottom: 16px;">
+    <% if (feePerms.viewAllocated) { %><div class="stat-card ochre"><div class="label">Total Fee (active)</div><div class="value">₹<%= totals.total_fee.toLocaleString('en-IN') %></div></div><% } %>
+    <% if (feePerms.viewCollected) { %><div class="stat-card green"><div class="label">Collected (active)</div><div class="value">₹<%= totals.fee_collected.toLocaleString('en-IN') %></div></div><% } %>
+    <% if (feePerms.viewDue) { %><div class="stat-card red"><div class="label">Pending (active)</div><div class="value">₹<%= totals.pending_fee.toLocaleString('en-IN') %></div></div><% } %>
+  </div>
+  <div class="hint" style="margin-bottom:16px;">These totals only count <strong>active</strong> enrollments — dropout enrollments are tracked separately and excluded here, so they don't inflate what's actually still owed.</div>
+  <% } %>
+
+  <% if (students.length === 0) { %>
+    <div class="card"><div class="empty-state">
+      <div class="big">🎓</div>
+      No students match the current filters.
+    </div></div>
+  <% } else { %>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Student ID</th>
+          <th>Name</th>
+          <th>Phone (Call)</th>
+          <th>Courses</th>
+          <% if (feePerms.viewAllocated) { %><th class="num">Fee (active)</th><% } %>
+          <% if (feePerms.viewCollected) { %><th class="num">Collected (active)</th><% } %>
+          <% if (feePerms.viewDue) { %><th class="num">Pending (active)</th><% } %>
+        </tr>
+      </thead>
+      <tbody>
+        <% students.forEach(s => { %>
+        <tr onclick="window.location='/students/<%= s.id %>'" style="cursor:pointer;">
+          <td data-label="Student ID"><%= s.person_code %></td>
+          <td data-label="Name"><strong><%= s.name %></strong></td>
+          <td data-label="Phone (Call)"><%= s.phone_call || '—' %></td>
+          <td data-label="Courses">
+            <%= s.enrollment_count %> course<%= s.enrollment_count === 1 ? '' : 's' %>
+            <% if (s.courses_summary) { %><div class="hint" style="margin-top:2px;"><%= s.courses_summary %></div><% } %>
+            <% if (s.active_enrollment_count < s.enrollment_count) { %><span class="badge badge-gray" style="margin-top:4px;"><%= s.enrollment_count - s.active_enrollment_count %> dropout</span><% } %>
+          </td>
+          <% if (feePerms.viewAllocated) { %><td class="num" data-label="Fee">₹<%= s.total_fee.toLocaleString('en-IN') %></td><% } %>
+          <% if (feePerms.viewCollected) { %><td class="num" data-label="Collected">₹<%= s.fee_collected.toLocaleString('en-IN') %></td><% } %>
+          <% if (feePerms.viewDue) { %>
+          <td class="num" data-label="Pending">
+            <% const pending = s.total_fee - s.fee_collected; %>
+            <% if (pending > 0) { %><span class="badge badge-red">₹<%= pending.toLocaleString('en-IN') %></span>
+            <% } else { %><span class="badge badge-green">Cleared</span><% } %>
+          </td>
+          <% } %>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+<%- include('partials/footer') %>

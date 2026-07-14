@@ -1,0 +1,115 @@
+<%- include('partials/header', { title: isEdit ? 'Edit Enrollment' : 'Add Course', user, active: 'students' }) %>
+
+  <div class="breadcrumb"><a href="/students">Students</a> / <a href="/students/<%= person.id %>"><%= person.name %></a> / <%= isEdit ? 'Edit Enrollment' : 'Add Course' %></div>
+  <div class="page-header">
+    <div>
+      <h1><%= isEdit ? 'Edit enrollment' : 'Add another course' %></h1>
+      <p class="subtitle"><%= person.person_code %> — <%= person.name %></p>
+    </div>
+  </div>
+
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+  <div class="card card-pad">
+    <form method="POST" action="<%= isEdit ? '/enrollments/' + enrollment.id : '/students/' + person.id + '/enrollments' %>">
+
+      <div class="form-grid">
+        <% if (user.role !== 'sales_staff') { %>
+        <div class="form-group">
+          <label>Sales Team (Admission Credit) <span class="req">*</span></label>
+          <% if (staffList.length > 0) { %>
+          <select name="sales_staff_id" required>
+            <option value="">Select Sales Team member</option>
+            <% staffList.forEach(st => { %>
+              <option value="<%= st.id %>" <%= String(enrollment.sales_staff_id) === String(st.id) ? 'selected' : '' %>><%= st.name %></option>
+            <% }) %>
+          </select>
+          <% } else { %>
+          <div class="alert alert-error" style="margin:0;">No active Sales Team accounts exist yet.</div>
+          <% } %>
+        </div>
+        <% } %>
+        <div class="form-group">
+          <label>Batch</label>
+          <% if (batches.length > 0) { %>
+          <select name="batch_id">
+            <option value="">No batch selected</option>
+            <% batches.forEach(bt => { %>
+              <option value="<%= bt.id %>" <%= String(enrollment.batch_id) === String(bt.id) ? 'selected' : '' %>><%= bt.name %></option>
+            <% }) %>
+          </select>
+          <div class="hint">Batches are managed under <a href="/batches">Batches</a>.</div>
+          <% } else { %>
+          <div class="alert alert-error" style="margin:0;">No batches exist yet.</div>
+          <% } %>
+        </div>
+        <div class="form-group">
+          <label>Course <span class="req">*</span></label>
+          <select name="course_select" id="courseSelect" required onchange="toggleCourseOther()">
+            <option value="">Select a course</option>
+            <% courses.forEach(c => { %>
+              <option value="<%= c %>" <%= enrollment.course === c ? 'selected' : '' %>><%= c %></option>
+            <% }) %>
+            <option value="__other__" <%= (enrollment.course && !courses.includes(enrollment.course)) ? 'selected' : '' %>>Other (type below)</option>
+          </select>
+        </div>
+        <div class="form-group" id="courseOtherGroup" style="display:none;">
+          <label>Course name <span class="req">*</span></label>
+          <input type="text" name="course_other" id="courseOther" placeholder="Type the course name" value="<%= (enrollment.course && !courses.includes(enrollment.course)) ? enrollment.course : '' %>">
+          <div class="hint"><a href="/courses">Manage the course list</a></div>
+        </div>
+        <div class="form-group">
+          <label>Joined Date <span class="req">*</span></label>
+          <input type="date" name="joined_date" required value="<%= enrollment.joined_date || '' %>">
+        </div>
+        <% if (isEdit && (user.role === 'admin' || user.role === 'staff')) { %>
+        <div class="form-group">
+          <label>Status</label>
+          <select name="status">
+            <option value="active" <%= enrollment.status !== 'dropout' ? 'selected' : '' %>>Active</option>
+            <option value="dropout" <%= enrollment.status === 'dropout' ? 'selected' : '' %>>Dropout</option>
+          </select>
+          <div class="hint">Dropout enrollments are excluded from pending-fee totals on the dashboard.</div>
+        </div>
+        <% } %>
+      </div>
+
+      <script>
+        function toggleCourseOther() {
+          const isOther = document.getElementById('courseSelect').value === '__other__';
+          document.getElementById('courseOtherGroup').style.display = isOther ? 'flex' : 'none';
+          document.getElementById('courseOther').required = isOther;
+        }
+        toggleCourseOther();
+      </script>
+
+      <% if (feePerms.viewAllocated || feePerms.editAllocated) { %>
+      <div class="form-section-title">Fee details</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Total Fee Allocated (₹) <% if (feePerms.editAllocated) { %><span class="req">*</span><% } %></label>
+          <% if (feePerms.editAllocated) { %>
+            <input type="number" step="0.01" min="0" name="total_fee" required value="<%= enrollment.total_fee !== undefined && enrollment.total_fee !== null ? enrollment.total_fee : '' %>">
+          <% } else { %>
+            <input type="number" value="<%= enrollment.total_fee || 0 %>" disabled style="background:#F3F4F6;">
+            <div class="hint">You have view-only access to this field.</div>
+          <% } %>
+        </div>
+      </div>
+      <% } %>
+
+      <div class="form-section-title">Remarks</div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <textarea name="remarks"><%= enrollment.remarks || '' %></textarea>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a href="<%= isEdit ? '/enrollments/' + enrollment.id : '/students/' + person.id %>" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+<%- include('partials/footer') %>

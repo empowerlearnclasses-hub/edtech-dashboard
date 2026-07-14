@@ -1,0 +1,35 @@
+<%- include('partials/header', { title: receipt.receipt_number, user, active: 'students' }) %>
+
+  <div class="breadcrumb"><a href="/enrollments/<%= student.id %>"><%= student.name %></a> / <%= receipt.receipt_number %></div>
+  <div class="page-header">
+    <div>
+      <h1><%= receipt.receipt_number %></h1>
+      <p class="subtitle">Receipt Voucher for <%= student.name %> (<%= student.student_code %>) · <%= receipt.receipt_date %></p>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <a href="/receipts/<%= receipt.id %>/pdf" target="_blank" class="btn btn-primary">Download PDF</a>
+      <% if (canEdit) { %>
+        <a href="/receipts/<%= receipt.id %>/edit" class="btn btn-outline">Edit</a>
+        <form method="POST" action="/receipts/<%= receipt.id %>/delete" onsubmit="return confirm('Delete this receipt voucher? This cannot be undone.');">
+          <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="card card-pad" style="max-width: 560px;">
+    <div class="detail-grid">
+      <div class="detail-item"><div class="k">Amount</div><div class="v">₹<%= receipt.amount.toLocaleString('en-IN') %></div></div>
+      <div class="detail-item"><div class="k">Receipt Date</div><div class="v"><%= receipt.receipt_date %></div></div>
+      <div class="detail-item"><div class="k">Payment Mode</div><div class="v"><%= receipt.payment_mode || '—' %></div></div>
+      <div class="detail-item"><div class="k">Linked Fee Collection</div><div class="v"><%= receipt.fee_collection_id ? '#' + receipt.fee_collection_id : '—' %></div></div>
+    </div>
+    <% if (receipt.notes) { %>
+      <div class="form-section-title">Notes</div>
+      <div class="v" style="font-weight:400;"><%= receipt.notes %></div>
+    <% } %>
+  </div>
+
+  <div class="hint" style="margin-top:14px;">"Download PDF" opens the exact same document whether you're on a computer or a phone — it's generated on the server, not by your browser's print function, so it always looks identical.</div>
+
+<%- include('partials/footer') %>

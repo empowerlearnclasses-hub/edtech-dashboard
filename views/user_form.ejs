@@ -1,0 +1,189 @@
+<%- include('partials/header', { title: staffUser ? 'Edit Account' : 'Add Account', user, active: 'users' }) %>
+
+  <div class="breadcrumb"><a href="/users">Staff & Access</a> / <%= staffUser ? 'Edit' : 'New' %></div>
+  <div class="page-header">
+    <div>
+      <h1><%= staffUser ? 'Edit account — ' + staffUser.name : 'Add new account' %></h1>
+      <p class="subtitle">Set the role, login, and exactly what they can view or edit — Batch Calendar access applies to the Sales Team too, everything else is Staff-only.</p>
+    </div>
+  </div>
+
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+  <div class="card card-pad" style="max-width: 720px;">
+    <form method="POST" action="<%= staffUser ? '/users/' + staffUser.id : '/users' %>">
+
+      <div class="form-section-title" style="margin-top:0;">Login details</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Full name <span class="req">*</span></label>
+          <input type="text" name="name" required value="<%= staffUser ? staffUser.name : '' %>">
+        </div>
+        <div class="form-group">
+          <label>Job role / designation</label>
+          <input type="text" name="designation" placeholder="e.g. Accounts Executive, Counselor, Front Office" value="<%= staffUser ? (staffUser.designation || '') : '' %>">
+          <div class="hint">A free-text title shown next to their name — not the same as their system Role below.</div>
+        </div>
+        <% if (!staffUser) { %>
+        <div class="form-group">
+          <label>Username <span class="req">*</span></label>
+          <input type="text" name="username" required>
+        </div>
+        <div class="form-group">
+          <label>Temporary password <span class="req">*</span></label>
+          <input type="text" name="password" required placeholder="Given to the staff member to change on first login">
+        </div>
+        <% } else { %>
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" value="<%= staffUser.username %>" disabled style="background:#F3F4F6;">
+        </div>
+        <div class="form-group">
+          <label>Reset password</label>
+          <input type="text" name="new_password" placeholder="Leave blank to keep current password">
+        </div>
+        <% } %>
+      </div>
+
+      <div class="form-section-title">System role</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Role <span class="req">*</span></label>
+          <select name="role" id="roleSelect" required onchange="togglePerms()">
+            <option value="sales_staff" <%= staffUser && staffUser.role === 'sales_staff' ? 'selected' : '' %>>Sales Team</option>
+            <option value="staff" <%= staffUser && staffUser.role === 'staff' ? 'selected' : '' %>>Staff (custom access)</option>
+            <option value="faculty" <%= staffUser && staffUser.role === 'faculty' ? 'selected' : '' %>>Faculty</option>
+            <option value="admin" <%= staffUser && staffUser.role === 'admin' ? 'selected' : '' %>>Admin</option>
+          </select>
+          <div class="hint">
+            <strong>Sales Team</strong> — full read/write for the students they've personally admitted, plus automatic View access to every batch calendar (to copy Zoom links).<br>
+            <strong>Staff</strong> — every field below is set manually.<br>
+            <strong>Faculty</strong> — no Dashboard, no student or fee access at all. Sees only the calendar of whichever batch(es) they're assigned to as Faculty (set from the Batches tab), to view the schedule and copy Zoom links.<br>
+            <strong>Admin</strong> — full access to everything, including staff accounts.
+          </div>
+        </div>
+        <% if (staffUser) { %>
+        <div class="form-group">
+          <label>Account status</label>
+          <div class="checkbox-row" style="margin-top:8px;">
+            <input type="checkbox" id="active" name="active" value="1" <%= staffUser.active ? 'checked' : '' %>>
+            <label for="active">Active (unchecking disables login without deleting the account)</label>
+          </div>
+        </div>
+        <% } %>
+      </div>
+
+      <div id="facultyNote" style="display:none;">
+        <div class="alert alert-success" style="margin: 0;">
+          Nothing to configure here for Faculty — save this account, then go to <a href="/batches">Batches</a> and set them as Faculty on whichever batch(es) they teach. They'll automatically see only that batch's calendar (schedule, Working/Leave/Holiday days, and Zoom links) — no Dashboard, no student or fee data, ever.
+        </div>
+      </div>
+
+      <div id="batchPermsBlock">
+        <div class="form-section-title">Batch Calendar, Courses &amp; Invoices access</div>
+        <div class="hint" style="margin-bottom:10px;">Sales Team accounts automatically have View on the batch calendar already (to copy Zoom links) — this table mainly matters for granting Staff accounts access, or optionally giving a Sales Team account Edit rights too.</div>
+        <div class="table-wrap" style="box-shadow:none;">
+          <table>
+            <thead><tr><th>Field</th><th style="text-align:center;">View</th><th style="text-align:center;">Edit</th></tr></thead>
+            <tbody>
+              <tr>
+                <td data-label="Field">Batch calendar (schedule, Working/Leave, Zoom links)</td>
+                <td style="text-align:center;" data-label="View"><input type="checkbox" id="pvb" name="perm_view_batches" value="1" <%= staffUser && staffUser.perm_view_batches ? 'checked' : '' %>></td>
+                <td style="text-align:center;" data-label="Edit"><input type="checkbox" name="perm_edit_batches" value="1" <%= staffUser && staffUser.perm_edit_batches ? 'checked' : '' %>></td>
+              </tr>
+              <tr>
+                <td data-label="Field">Course list (add new courses)</td>
+                <td style="text-align:center; color:var(--text-muted);" data-label="View">Anyone who edits students</td>
+                <td style="text-align:center;" data-label="Edit"><input type="checkbox" name="perm_edit_courses" value="1" <%= staffUser && staffUser.perm_edit_courses ? 'checked' : '' %>></td>
+              </tr>
+              <tr>
+                <td data-label="Field">Invoices &amp; Receipt Vouchers</td>
+                <td style="text-align:center;" data-label="View"><input type="checkbox" name="perm_view_invoices" value="1" <%= staffUser && staffUser.perm_view_invoices ? 'checked' : '' %>></td>
+                <td style="text-align:center;" data-label="Edit"><input type="checkbox" id="peiv" name="perm_edit_invoices" value="1" <%= staffUser && staffUser.perm_edit_invoices ? 'checked' : '' %>></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="hint" style="margin-top:10px;">Batch: View lets this account open any batch's calendar and copy Zoom links; Edit additionally lets them create batches, change the schedule, and add/change links. Course: anyone who can edit students can already pick from the existing course list — this Edit checkbox controls whether they can add a brand new course to that shared list (e.g. via "Other" on the student form). Invoices &amp; Receipts: Sales Team automatically get View + the ability to create a new invoice or generate a receipt, for their own students — but they can never edit or delete one afterward, even their own. This "Edit" checkbox is what actually grants edit/delete power, and only Staff accounts use it (Sales Team can't be granted it).</div>
+      </div>
+
+      <div id="permsBlock">
+        <div class="form-section-title">Student Master Data access</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <div class="checkbox-row"><input type="checkbox" id="pvs" name="perm_view_students" value="1" <%= staffUser && staffUser.perm_view_students ? 'checked' : '' %>><label for="pvs">Can view students (profile & contact details)</label></div>
+            <div class="checkbox-row" style="margin-top:8px;"><input type="checkbox" id="pes" name="perm_edit_students" value="1" <%= staffUser && staffUser.perm_edit_students ? 'checked' : '' %>><label for="pes">Can add / edit student profile fields</label></div>
+          </div>
+        </div>
+
+        <div class="form-section-title">Fee data access — field by field</div>
+        <div class="hint" style="margin-bottom:10px;">Fee Due, Due Ageing Days and Due % are calculated automatically from Fee and Fee Collected, so there's no separate edit right for them — only whether this account can see the number.</div>
+        <div class="table-wrap" style="box-shadow:none;">
+          <table>
+            <thead><tr><th>Field</th><th style="text-align:center;">View</th><th style="text-align:center;">Edit</th></tr></thead>
+            <tbody>
+              <tr>
+                <td data-label="Field">Fee (Total Fee Allocated)</td>
+                <td style="text-align:center;" data-label="View"><input type="checkbox" name="perm_view_fee_allocated" value="1" <%= staffUser && staffUser.perm_view_fee_allocated ? 'checked' : '' %>></td>
+                <td style="text-align:center;" data-label="Edit"><input type="checkbox" name="perm_edit_fee_allocated" value="1" <%= staffUser && staffUser.perm_edit_fee_allocated ? 'checked' : '' %>></td>
+              </tr>
+              <tr>
+                <td data-label="Field">Fee Collected</td>
+                <td style="text-align:center;" data-label="View"><input type="checkbox" name="perm_view_fee_collected" value="1" <%= staffUser && staffUser.perm_view_fee_collected ? 'checked' : '' %>></td>
+                <td style="text-align:center;" data-label="Edit"><input type="checkbox" name="perm_edit_fee_collected" value="1" <%= staffUser && staffUser.perm_edit_fee_collected ? 'checked' : '' %>></td>
+              </tr>
+              <tr>
+                <td data-label="Field">Fee Due (Pending)</td>
+                <td style="text-align:center;" data-label="View"><input type="checkbox" name="perm_view_fee_due" value="1" <%= staffUser && staffUser.perm_view_fee_due ? 'checked' : '' %>></td>
+                <td style="text-align:center; color:var(--text-muted);" data-label="Edit">—</td>
+              </tr>
+              <tr>
+                <td data-label="Field">Fee Due Ageing (Days)</td>
+                <td style="text-align:center;" data-label="View"><input type="checkbox" name="perm_view_fee_ageing" value="1" <%= staffUser && staffUser.perm_view_fee_ageing ? 'checked' : '' %>></td>
+                <td style="text-align:center; color:var(--text-muted);" data-label="Edit">—</td>
+              </tr>
+              <tr>
+                <td data-label="Field">Fee Due Percentage</td>
+                <td style="text-align:center;" data-label="View"><input type="checkbox" name="perm_view_fee_due_percentage" value="1" <%= staffUser && staffUser.perm_view_fee_due_percentage ? 'checked' : '' %>></td>
+                <td style="text-align:center; color:var(--text-muted);" data-label="Edit">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="hint" style="margin-top:10px;">"Edit Fee Collected" allows recording new payments and removing entries. This Staff account sees records across the whole Sales Team — access here is per field, not per-student.</div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save account</button>
+        <a href="/users" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    function togglePerms() {
+      const role = document.getElementById('roleSelect').value;
+      document.getElementById('permsBlock').style.display = role === 'staff' ? 'block' : 'none';
+      document.getElementById('batchPermsBlock').style.display = (role === 'staff' || role === 'sales_staff') ? 'block' : 'none';
+      document.getElementById('facultyNote').style.display = role === 'faculty' ? 'block' : 'none';
+
+      const viewBatches = document.getElementById('pvb');
+      if (role === 'sales_staff') {
+        viewBatches.checked = true;
+        viewBatches.disabled = true;
+      } else {
+        viewBatches.disabled = false;
+      }
+
+      const editInvoices = document.getElementById('peiv');
+      if (role === 'sales_staff') {
+        editInvoices.checked = false;
+        editInvoices.disabled = true;
+      } else {
+        editInvoices.disabled = false;
+      }
+    }
+    togglePerms();
+  </script>
+
+<%- include('partials/footer') %>

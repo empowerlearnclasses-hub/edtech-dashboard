@@ -1,0 +1,59 @@
+<%- include('partials/header', { title: 'Batches', user, active: 'batches' }) %>
+
+  <div class="page-header">
+    <div>
+      <h1>Batches</h1>
+      <p class="subtitle"><%= facultyScoped ? 'Batches where you\'re listed as Faculty.' : 'Course runs, their schedule, and Zoom links for each class day.' %></p>
+    </div>
+    <% if (canManage) { %><a href="/batches/new" class="btn btn-primary">+ New Batch</a><% } %>
+  </div>
+
+  <% if (batches.length === 0) { %>
+    <div class="card"><div class="empty-state">
+      <div class="big">📅</div>
+      No batches created yet.
+      <% if (canManage) { %><br><a href="/batches/new">Create your first batch</a><% } %>
+    </div></div>
+  <% } else { %>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Batch Name</th>
+          <th>Faculty</th>
+          <th>Start</th>
+          <th>End</th>
+          <th class="num">Students</th>
+          <th class="num">Working Days</th>
+          <th class="num">Leave Days</th>
+          <th class="num">Holiday Days</th>
+          <th class="num">Classes Done</th>
+          <th class="num">Recording Pending</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% batches.forEach(b => { %>
+        <tr onclick="window.location='/batches/<%= b.id %>'" style="cursor:pointer;">
+          <td data-label="Batch Name"><strong><%= b.name %></strong></td>
+          <td data-label="Faculty"><%= b.faculty_account_name || b.faculty_name || '—' %></td>
+          <td data-label="Start"><%= b.start_date || '—' %></td>
+          <td data-label="End"><%= b.end_date || '—' %></td>
+          <td class="num" data-label="Students"><%= b.student_count %></td>
+          <td class="num" data-label="Working Days"><%= b.working_days %></td>
+          <td class="num" data-label="Leave Days"><%= b.leave_days %></td>
+          <td class="num" data-label="Holiday Days"><%= b.holiday_days %></td>
+          <td class="num" data-label="Classes Done"><%= b.classes_completed %></td>
+          <td class="num" data-label="Recording Pending">
+            <% if (b.recordings_pending > 0) { %><span class="badge badge-red"><%= b.recordings_pending %></span>
+            <% } else { %><span class="badge badge-green">0</span><% } %>
+          </td>
+          <td><a href="/batches/<%= b.id %>" class="btn btn-sm btn-outline">View Calendar</a></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,62 @@
+<%- include('partials/header', { title: 'Staff & Access', user, active: 'users' }) %>
+
+  <div class="page-header">
+    <div>
+      <h1>Staff & Access Rights</h1>
+      <p class="subtitle">Manage login accounts for the Sales Team, Staff, and Faculty, and set exactly which fields each account can view or edit.</p>
+    </div>
+    <a href="/users/new" class="btn btn-primary">+ Add account</a>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Name</th><th>Job Role</th><th>Username</th><th>System Role</th><th>Status</th><th class="wrap">Access rights</th><th></th>
+      </tr></thead>
+      <tbody>
+        <% users.forEach(u => { %>
+        <tr>
+          <td data-label="Name"><strong><%= u.name %></strong></td>
+          <td data-label="Job Role"><%= u.designation || '—' %></td>
+          <td data-label="Username"><%= u.username %></td>
+          <td data-label="System Role"><span class="badge badge-gray"><%= roleLabel(u.role) %></span></td>
+          <td data-label="Status">
+            <% if (u.active) { %><span class="badge badge-green">Active</span><% } else { %><span class="badge badge-red">Disabled</span><% } %>
+          </td>
+          <td class="wrap" data-label="Access rights">
+            <% if (u.role === 'admin') { %>
+              Full access
+            <% } else if (u.role === 'sales_staff') { %>
+              Own students — full read/write
+              <span class="badge badge-gray">Batches R (auto)<%= u.perm_edit_batches ? ' + W' : '' %></span>
+              <span class="badge badge-gray">Invoices: View + Create (auto)</span>
+              <% if (u.perm_edit_courses) { %><span class="badge badge-gray">Can add Courses</span><% } %>
+            <% } else if (u.role === 'faculty') { %>
+              <% if (u.assignedBatches) { %>
+                <span class="badge badge-gray">Sees: <%= u.assignedBatches %></span>
+              <% } else { %>
+                <span style="color:var(--text-muted)">No batch assigned yet</span>
+              <% } %>
+            <% } else { %>
+              <% if (u.perm_view_students) { %><span class="badge badge-gray"><%= u.perm_edit_students ? 'Students R/W' : 'Students R' %></span> <% } %>
+              <% if (u.perm_view_fee_allocated) { %><span class="badge badge-gray"><%= u.perm_edit_fee_allocated ? 'Fee R/W' : 'Fee R' %></span> <% } %>
+              <% if (u.perm_view_fee_collected) { %><span class="badge badge-gray"><%= u.perm_edit_fee_collected ? 'Collected R/W' : 'Collected R' %></span> <% } %>
+              <% if (u.perm_view_fee_due) { %><span class="badge badge-gray">Due R</span> <% } %>
+              <% if (u.perm_view_fee_ageing) { %><span class="badge badge-gray">Ageing R</span> <% } %>
+              <% if (u.perm_view_fee_due_percentage) { %><span class="badge badge-gray">Due % R</span> <% } %>
+              <% if (u.perm_view_batches) { %><span class="badge badge-gray"><%= u.perm_edit_batches ? 'Batches R/W' : 'Batches R' %></span> <% } %>
+              <% if (u.perm_view_invoices) { %><span class="badge badge-gray"><%= u.perm_edit_invoices ? 'Invoices R/W' : 'Invoices R' %></span> <% } %>
+              <% if (u.perm_edit_courses) { %><span class="badge badge-gray">Can add Courses</span> <% } %>
+              <% if (!u.perm_view_students && !u.perm_view_fee_allocated && !u.perm_view_fee_collected && !u.perm_view_fee_due && !u.perm_view_fee_ageing && !u.perm_view_fee_due_percentage && !u.perm_view_batches && !u.perm_view_invoices && !u.perm_edit_courses) { %>
+                <span style="color:var(--text-muted)">No access assigned</span>
+              <% } %>
+            <% } %>
+          </td>
+          <td><a href="/users/<%= u.id %>/edit" class="btn btn-sm btn-outline">Edit</a></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+<%- include('partials/footer') %>
