@@ -78,7 +78,7 @@ router.get('/', requireLogin, requireViewStudents, async (req, res) => {
     params.push(like, like, like, like, like);
   }
   if (batch_id) {
-    conditions.push('p.id IN (SELECT person_id FROM enrollments WHERE batch_id = ?)');
+    conditions.push('p.id IN (SELECT e.person_id FROM enrollments e JOIN enrollment_batches eb ON eb.enrollment_id = e.id WHERE eb.batch_id = ?)');
     params.push(batch_id);
   }
   if (course) {
@@ -126,14 +126,15 @@ router.get('/export', requireLogin, requireViewStudents, async (req, res) => {
     SELECT p.person_code, p.name, p.phone_whatsapp, p.phone_call, p.email, p.location, p.district,
            p.state, p.pincode, p.job_role, p.job_business_name, p.job_location,
            e.course, e.joined_date, e.total_fee, e.status,
-           u.name AS sales_staff_name, bt.name AS batch_name, a.name AS added_by_name,
+           u.name AS sales_staff_name,
+           (SELECT STRING_AGG(b.name, ', ') FROM enrollment_batches eb JOIN batches b ON b.id = eb.batch_id WHERE eb.enrollment_id = e.id) AS batch_name,
+           a.name AS added_by_name,
            COALESCE(f.total_collected, 0) AS fee_collected,
            (e.total_fee - COALESCE(f.total_collected, 0)) AS pending_fee
     FROM enrollments e
     JOIN persons p ON p.id = e.person_id
     LEFT JOIN users u ON u.id = e.sales_staff_id
     LEFT JOIN users a ON a.id = e.added_by
-    LEFT JOIN batches bt ON bt.id = e.batch_id
     LEFT JOIN (SELECT enrollment_id, SUM(amount) AS total_collected FROM fee_collections GROUP BY enrollment_id) f ON f.enrollment_id = e.id
   `;
   const params = [];
@@ -145,7 +146,7 @@ router.get('/export', requireLogin, requireViewStudents, async (req, res) => {
     const like = `%${q}%`;
     params.push(like, like, like, like, like);
   }
-  if (batch_id) { conditions.push('e.batch_id = ?'); params.push(batch_id); }
+  if (batch_id) { conditions.push('e.id IN (SELECT enrollment_id FROM enrollment_batches WHERE batch_id = ?)'); params.push(batch_id); }
   if (course) { conditions.push('e.course = ?'); params.push(course); }
   if (staff_id && !isOwnScopeOnly(user)) { conditions.push('e.sales_staff_id = ?'); params.push(staff_id); }
   if (conditions.length) sql += ' WHERE ' + conditions.join(' AND ');
@@ -254,9 +255,10 @@ router.post('/import', requireLogin, requireViewStudents, upload.single('file'),
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
   `);
   const insertEnrollment = db.prepare(`
-    INSERT INTO enrollments (person_id, sales_staff_id, added_by, batch_id, course, joined_date, total_fee, remarks, status)
-    VALUES (?,?,?,?,?,?,?,?, 'active')
+    INSERT INTO enrollments (person_id, sales_staff_id, added_by, course, joined_date, total_fee, remarks, status)
+    VALUES (?,?,?,?,?,?,?, 'active')
   `);
+  const insertEnrollmentBatch = db.prepare(`INSERT INTO enrollment_batches (enrollment_id, batch_id) VALUES (?, ?) ON CONFLICT (enrollment_id, batch_id) DO NOTHING`);
   const canSetFee = canEditFeeAllocated(user);
 
   for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber++) {
@@ -287,6 +289,8 @@ router.post('/import', requireLogin, requireViewStudents, upload.single('file'),
     if (!salesStaffId) { errors.push(`Row ${rowNumber} (${name}): Sales Team "${salesTeamName}" doesn't match an active account — skipped.`); skipped++; continue; }
     if (isOwnScopeOnly(user) && salesStaffId !== user.id) { errors.push(`Row ${rowNumber} (${name}): you can only import enrollments credited to yourself — skipped.`); skipped++; continue; }
 
+    // The import file only sets ONE batch per row — if a student attends more than one
+    // batch, add the extra one(s) afterward from their enrollment page.
     const batchName = getCell(row, 'batch');
     const batchId = batchName ? (batchByName[batchName.toLowerCase()] || null) : null;
     if (batchName && !batchId) errors.push(`Row ${rowNumber} (${name}): batch "${batchName}" not found — left unset.`);
@@ -303,7 +307,8 @@ router.post('/import', requireLogin, requireViewStudents, upload.single('file'),
         const owns = await db.prepare(`SELECT 1 FROM enrollments WHERE person_id = ? AND sales_staff_id = ?`).get(personId, user.id);
         if (!owns) { errors.push(`Row ${rowNumber} (${name}): student ${studentCode} isn't one of yours — skipped.`); skipped++; continue; }
       }
-      await insertEnrollment.run(personId, salesStaffId, user.id, batchId, course, joinedDate, totalFee, remarks);
+      const enrollResult = await insertEnrollment.run(personId, salesStaffId, user.id, course, joinedDate, totalFee, remarks);
+      if (batchId) await insertEnrollmentBatch.run(enrollResult.lastInsertRowid, batchId);
       newEnrollments++;
     } else {
       if (!name) { errors.push(`Row ${rowNumber}: missing Name — skipped.`); skipped++; continue; }
@@ -316,7 +321,8 @@ router.post('/import', requireLogin, requireViewStudents, upload.single('file'),
         user.id
       );
       personByCode[newCode.toLowerCase()] = personResult.lastInsertRowid;
-      await insertEnrollment.run(personResult.lastInsertRowid, salesStaffId, user.id, batchId, course, joinedDate, totalFee, remarks);
+      const enrollResult = await insertEnrollment.run(personResult.lastInsertRowid, salesStaffId, user.id, course, joinedDate, totalFee, remarks);
+      if (batchId) await insertEnrollmentBatch.run(enrollResult.lastInsertRowid, batchId);
       newPersons++;
       newEnrollments++;
     }
@@ -360,13 +366,10 @@ router.post('/', requireLogin, requireViewStudents, async (req, res) => {
     }
   }
 
-  let batch_id = null;
-  if (b.batch_id) {
-    const candidate = parseInt(b.batch_id, 10);
-    if (!candidate || !batches.some(bt => bt.id === candidate)) {
-      return rerenderWithError('That batch no longer exists — pick a current one from the list, or leave it unset.');
-    }
-    batch_id = candidate;
+  let batchIds = [].concat(b.batch_ids || []).map(id => parseInt(id, 10)).filter(Boolean);
+  const validBatchIds = batchIds.filter(id => batches.some(bt => bt.id === id));
+  if (validBatchIds.length !== batchIds.length) {
+    return rerenderWithError('One of the selected batches no longer exists — pick current ones from the list.');
   }
 
   await maybeCreateCourse(b, user);
@@ -382,10 +385,15 @@ router.post('/', requireLogin, requireViewStudents, async (req, res) => {
     b.location, b.district, b.state, b.pincode, b.job_role, b.job_business_name, b.job_location, user.id
   );
 
-  await db.prepare(`
-    INSERT INTO enrollments (person_id, sales_staff_id, added_by, batch_id, course, joined_date, total_fee, remarks, status)
-    VALUES (?,?,?,?,?,?,?,?, 'active')
-  `).run(personResult.lastInsertRowid, sales_staff_id, user.id, batch_id, course, b.joined_date, total_fee, b.remarks);
+  const enrollResult = await db.prepare(`
+    INSERT INTO enrollments (person_id, sales_staff_id, added_by, course, joined_date, total_fee, remarks, status)
+    VALUES (?,?,?,?,?,?,?, 'active')
+  `).run(personResult.lastInsertRowid, sales_staff_id, user.id, course, b.joined_date, total_fee, b.remarks);
+
+  const insertEnrollmentBatch = db.prepare(`INSERT INTO enrollment_batches (enrollment_id, batch_id) VALUES (?, ?) ON CONFLICT (enrollment_id, batch_id) DO NOTHING`);
+  for (const batchId of validBatchIds) {
+    await insertEnrollmentBatch.run(enrollResult.lastInsertRowid, batchId);
+  }
 
   res.redirect('/students/' + personResult.lastInsertRowid);
 });
@@ -397,12 +405,12 @@ router.get('/:id', requireLogin, requireViewStudents, async (req, res) => {
   if (!person) return res.status(404).render('error', { message: 'Student not found.', user });
 
   let enrollments = await db.prepare(`
-    SELECT e.*, u.name AS sales_staff_name, bt.name AS batch_name,
+    SELECT e.*, u.name AS sales_staff_name,
+      (SELECT STRING_AGG(b.name, ', ') FROM enrollment_batches eb JOIN batches b ON b.id = eb.batch_id WHERE eb.enrollment_id = e.id) AS batch_name,
       COALESCE(f.total_collected, 0) AS fee_collected,
       (e.total_fee - COALESCE(f.total_collected, 0)) AS pending_fee
     FROM enrollments e
     LEFT JOIN users u ON u.id = e.sales_staff_id
-    LEFT JOIN batches bt ON bt.id = e.batch_id
     LEFT JOIN (SELECT enrollment_id, SUM(amount) AS total_collected FROM fee_collections GROUP BY enrollment_id) f ON f.enrollment_id = e.id
     WHERE e.person_id = ?
     ORDER BY e.created_at DESC

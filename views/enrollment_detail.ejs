@@ -6,7 +6,7 @@
       <h1><%= enrollment.course || 'Course' %></h1>
       <p class="subtitle">
         <%= enrollment.person_code %> · <%= enrollment.person_name %> · Batch:
-        <% if (enrollment.batch_name) { %><a href="/batches/<%= enrollment.batch_id %>"><%= enrollment.batch_name %></a><% } else { %>—<% } %>
+        <% if (enrollment.batches && enrollment.batches.length > 0) { %><% enrollment.batches.forEach((bt, i) => { %><% if (i > 0) { %>, <% } %><a href="/batches/<%= bt.id %>"><%= bt.name %></a><% }) %><% } else { %>—<% } %>
         · Sales Team: <%= enrollment.sales_staff_name || '—' %>
         · <% if (enrollment.status === 'dropout') { %><span class="badge badge-gray">Dropout</span><% } else { %><span class="badge badge-green">Active</span><% } %>
       </p>

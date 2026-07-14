@@ -103,6 +103,8 @@ This is fully separate from the Fee permission system — assigning someone a ta
 - **Fee, invoice, and receipt records always belong to one specific Enrollment**, never to the person generally — recording a payment for their Web Development course has zero effect on their Data Analytics course's numbers, even though it's the same person.
 - **Import** recognizes this too: uploading a row with a Student ID that already exists adds a new course for that person instead of creating a duplicate profile — see Section 9.
 
+**One Enrollment can be scheduled into more than one Batch.** If a student attends two sessions of the *same* course (e.g. a morning batch and an evening batch), that's still just **one** Enrollment, one fee, one invoice/receipt history — you just tick more than one batch when adding or editing that enrollment. This is different from taking a second course: same course + extra batch = tick another box on the same enrollment; a genuinely different course = "+ Add another course" (a whole new Enrollment). Tasks and attendance-style features scoped to "a batch" pick up a student correctly regardless of which of their batches matches.
+
 **Dropout status**: each Enrollment (not the whole person) can be marked **Active** or **Dropout** — from that course's page, or from its edit form. A Dropout enrollment:
 - Is excluded from the Dashboard's pending-fee totals and the Students list's fee summary, so it doesn't inflate "how much is actually still owed."
 - Keeps its full fee/invoice/receipt history intact and visible — nothing is deleted, it's just excluded from active totals.

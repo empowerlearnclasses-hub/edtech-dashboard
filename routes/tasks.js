@@ -25,7 +25,7 @@ router.get('/', requireLogin, async (req, res) => {
 
   let sql = `
     SELECT t.*, u.name AS assigned_to_name, c.name AS created_by_name, bt.name AS batch_name,
-      CASE WHEN t.scope_type = 'batch' THEN (SELECT COUNT(*) FROM enrollments e WHERE e.batch_id = t.batch_id AND e.status = 'active')
+      CASE WHEN t.scope_type = 'batch' THEN (SELECT COUNT(*) FROM enrollment_batches eb JOIN enrollments e ON e.id = eb.enrollment_id WHERE eb.batch_id = t.batch_id AND e.status = 'active')
            WHEN t.scope_type = 'students' THEN (SELECT COUNT(*) FROM task_students ts2 WHERE ts2.task_id = t.id)
            ELSE NULL END AS total_students,
       CASE WHEN t.scope_type IN ('batch','students') THEN (
@@ -134,22 +134,24 @@ router.get('/:id', requireLogin, async (req, res) => {
   let studentRows = [];
   if (task.scope_type === 'batch') {
     studentRows = await db.prepare(`
-      SELECT e.id, p.person_code AS student_code, p.name, e.course, bt.name AS batch_name,
+      SELECT e.id, p.person_code AS student_code, p.name, e.course,
+        (SELECT STRING_AGG(b.name, ', ') FROM enrollment_batches eb2 JOIN batches b ON b.id = eb2.batch_id WHERE eb2.enrollment_id = e.id) AS batch_name,
         COALESCE(ts.status, 'pending') AS status, ts.completed_at, ts.notes
       FROM enrollments e
       JOIN persons p ON p.id = e.person_id
-      LEFT JOIN batches bt ON bt.id = e.batch_id
+      JOIN enrollment_batches eb ON eb.enrollment_id = e.id
       LEFT JOIN task_students ts ON ts.task_id = ? AND ts.enrollment_id = e.id
-      WHERE e.batch_id = ? AND e.status = 'active'
+      WHERE eb.batch_id = ? AND e.status = 'active'
       ORDER BY p.name
     `).all(task.id, task.batch_id);
   } else if (task.scope_type === 'students') {
     studentRows = await db.prepare(`
-      SELECT e.id, p.person_code AS student_code, p.name, e.course, bt.name AS batch_name, ts.status, ts.completed_at, ts.notes
+      SELECT e.id, p.person_code AS student_code, p.name, e.course,
+        (SELECT STRING_AGG(b.name, ', ') FROM enrollment_batches eb2 JOIN batches b ON b.id = eb2.batch_id WHERE eb2.enrollment_id = e.id) AS batch_name,
+        ts.status, ts.completed_at, ts.notes
       FROM task_students ts
       JOIN enrollments e ON e.id = ts.enrollment_id
       JOIN persons p ON p.id = e.person_id
-      LEFT JOIN batches bt ON bt.id = e.batch_id
       WHERE ts.task_id = ?
       ORDER BY p.name
     `).all(task.id);

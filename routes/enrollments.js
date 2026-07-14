@@ -11,21 +11,40 @@ const ENROLLMENT_SELECT = `
   SELECT e.*, p.person_code, p.name AS person_name, p.phone_call, p.phone_whatsapp, p.email,
          u.name AS sales_staff_name,
          a.name AS added_by_name,
-         bt.name AS batch_name,
          COALESCE(f.total_collected, 0) AS fee_collected,
          (e.total_fee - COALESCE(f.total_collected, 0)) AS pending_fee
   FROM enrollments e
   JOIN persons p ON p.id = e.person_id
   LEFT JOIN users u ON u.id = e.sales_staff_id
   LEFT JOIN users a ON a.id = e.added_by
-  LEFT JOIN batches bt ON bt.id = e.batch_id
   LEFT JOIN (
     SELECT enrollment_id, SUM(amount) AS total_collected FROM fee_collections GROUP BY enrollment_id
   ) f ON f.enrollment_id = e.id
 `;
 
 async function getEnrollment(id) {
-  return db.prepare(ENROLLMENT_SELECT + ' WHERE e.id = ?').get(id);
+  const enrollment = await db.prepare(ENROLLMENT_SELECT + ' WHERE e.id = ?').get(id);
+  if (enrollment) enrollment.batches = await getEnrollmentBatches(id);
+  return enrollment;
+}
+
+// A student can be scheduled into more than one batch for the same course (e.g. morning
+// + evening sessions) — this returns all of them for one enrollment.
+async function getEnrollmentBatches(enrollmentId) {
+  return db.prepare(`
+    SELECT b.id, b.name FROM enrollment_batches eb JOIN batches b ON b.id = eb.batch_id
+    WHERE eb.enrollment_id = ? ORDER BY b.name
+  `).all(enrollmentId);
+}
+
+// Replaces the full set of batches linked to an enrollment with exactly the given list —
+// simplest correct way to handle "add some, remove some" in one form submission.
+async function setEnrollmentBatches(enrollmentId, batchIds) {
+  await db.prepare('DELETE FROM enrollment_batches WHERE enrollment_id = ?').run(enrollmentId);
+  const insert = db.prepare('INSERT INTO enrollment_batches (enrollment_id, batch_id) VALUES (?, ?) ON CONFLICT (enrollment_id, batch_id) DO NOTHING');
+  for (const batchId of batchIds) {
+    await insert.run(enrollmentId, batchId);
+  }
 }
 
 async function activeSalesStaffList() {
@@ -52,6 +71,14 @@ async function maybeCreateCourse(b, user) {
     }
   }
 }
+// Validates the submitted batch_ids[] against the current batch list, so a stale form
+// (referencing a since-deleted batch) is rejected with a clear error rather than silently
+// dropped or crashing.
+function parseSelectedBatchIds(b, batches) {
+  const submitted = [].concat(b.batch_ids || []).map(id => parseInt(id, 10)).filter(Boolean);
+  const valid = submitted.filter(id => batches.some(bt => bt.id === id));
+  return { valid, hadInvalid: valid.length !== submitted.length };
+}
 
 // ---------- NEW ENROLLMENT for an existing Person (a second/third course) ----------
 router.get('/students/:personId/enrollments/new', requireLogin, async (req, res) => {
@@ -61,7 +88,7 @@ router.get('/students/:personId/enrollments/new', requireLogin, async (req, res)
   if (!person) return res.status(404).render('error', { message: 'Student not found.', user });
   const staffList = showsSalesStaffPicker(user) ? await activeSalesStaffList() : [];
   res.render('enrollment_form', {
-    user, person, isEdit: false, enrollment: {}, staffList, batches: await allBatches(), courses: await courseList(),
+    user, person, isEdit: false, enrollment: { batches: [] }, staffList, batches: await allBatches(), courses: await courseList(),
     feePerms: getFeePerms(user), error: null,
   });
 });
@@ -78,7 +105,7 @@ router.post('/students/:personId/enrollments', requireLogin, async (req, res) =>
   const courses = await courseList();
 
   const rerenderWithError = (error) => res.render('enrollment_form', {
-    user, person, isEdit: false, enrollment: b, staffList, batches, courses, feePerms: getFeePerms(user), error,
+    user, person, isEdit: false, enrollment: { ...b, batches: [] }, staffList, batches, courses, feePerms: getFeePerms(user), error,
   });
 
   if (!b.joined_date) return rerenderWithError('Joined Date is required.');
@@ -95,22 +122,18 @@ router.post('/students/:personId/enrollments', requireLogin, async (req, res) =>
     }
   }
 
-  let batch_id = null;
-  if (b.batch_id) {
-    const candidate = parseInt(b.batch_id, 10);
-    if (!candidate || !batches.some(bt => bt.id === candidate)) {
-      return rerenderWithError('That batch no longer exists — pick a current one from the list, or leave it unset.');
-    }
-    batch_id = candidate;
-  }
+  const { valid: batchIds, hadInvalid } = parseSelectedBatchIds(b, batches);
+  if (hadInvalid) return rerenderWithError('One of the selected batches no longer exists — pick current ones from the list.');
 
   await maybeCreateCourse(b, user);
   const total_fee = canEditFeeAllocated(user) ? (parseFloat(b.total_fee) || 0) : 0;
 
   const result = await db.prepare(`
-    INSERT INTO enrollments (person_id, sales_staff_id, added_by, batch_id, course, joined_date, total_fee, remarks, status)
-    VALUES (?,?,?,?,?,?,?,?, 'active')
-  `).run(person.id, sales_staff_id, user.id, batch_id, course, b.joined_date, total_fee, b.remarks || null);
+    INSERT INTO enrollments (person_id, sales_staff_id, added_by, course, joined_date, total_fee, remarks, status)
+    VALUES (?,?,?,?,?,?,?, 'active')
+  `).run(person.id, sales_staff_id, user.id, course, b.joined_date, total_fee, b.remarks || null);
+
+  await setEnrollmentBatches(result.lastInsertRowid, batchIds);
 
   res.redirect('/students/' + person.id);
 });
@@ -187,9 +210,14 @@ router.post('/enrollments/:id', requireLogin, async (req, res) => {
   const batches = await allBatches();
   const courses = await courseList();
 
-  const rerenderWithError = (error) => res.render('enrollment_form', {
-    user, person, isEdit: true, enrollment: { ...enrollment, ...b }, staffList, batches, courses, feePerms: getFeePerms(user), error,
-  });
+  const rerenderWithError = (error) => {
+    const submittedBatchIds = [].concat(b.batch_ids || []).map(id => parseInt(id, 10)).filter(Boolean);
+    return res.render('enrollment_form', {
+      user, person, isEdit: true,
+      enrollment: { ...enrollment, ...b, batches: submittedBatchIds.map(id => ({ id })) },
+      staffList, batches, courses, feePerms: getFeePerms(user), error,
+    });
+  };
 
   if (!b.joined_date) return rerenderWithError('Joined Date is required.');
   const course = getCourseValue(b);
@@ -202,27 +230,19 @@ router.post('/enrollments/:id', requireLogin, async (req, res) => {
     sales_staff_id = candidate;
   }
 
-  let batch_id = enrollment.batch_id;
-  if (b.batch_id !== undefined) {
-    if (!b.batch_id) {
-      batch_id = null;
-    } else {
-      const candidate = parseInt(b.batch_id, 10);
-      if (!candidate || !batches.some(bt => bt.id === candidate)) {
-        return rerenderWithError('That batch no longer exists — pick a current one from the list, or leave it unset.');
-      }
-      batch_id = candidate;
-    }
-  }
+  const { valid: batchIds, hadInvalid } = parseSelectedBatchIds(b, batches);
+  if (hadInvalid) return rerenderWithError('One of the selected batches no longer exists — pick current ones from the list.');
 
   await maybeCreateCourse(b, user);
   const total_fee = canEditFeeAllocated(user) ? (parseFloat(b.total_fee) || 0) : enrollment.total_fee;
   const status = (user.role === 'admin' || user.role === 'staff') && ['active', 'dropout'].includes(b.status) ? b.status : enrollment.status;
 
   await db.prepare(`
-    UPDATE enrollments SET sales_staff_id = ?, batch_id = ?, course = ?, joined_date = ?, total_fee = ?, remarks = ?, status = ?, updated_at = to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+    UPDATE enrollments SET sales_staff_id = ?, course = ?, joined_date = ?, total_fee = ?, remarks = ?, status = ?, updated_at = to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
     WHERE id = ?
-  `).run(sales_staff_id, batch_id, course, b.joined_date, total_fee, b.remarks || null, status, enrollment.id);
+  `).run(sales_staff_id, course, b.joined_date, total_fee, b.remarks || null, status, enrollment.id);
+
+  await setEnrollmentBatches(enrollment.id, batchIds);
 
   res.redirect('/enrollments/' + enrollment.id);
 });
@@ -282,3 +302,4 @@ router.post('/enrollments/:id/fees/:feeId/delete', requireLogin, async (req, res
 module.exports = router;
 module.exports.ENROLLMENT_SELECT = ENROLLMENT_SELECT;
 module.exports.getEnrollment = getEnrollment;
+module.exports.getEnrollmentBatches = getEnrollmentBatches;

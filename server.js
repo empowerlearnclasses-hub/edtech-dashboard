@@ -129,7 +129,9 @@ app.get('/', requireLogin, async (req, res) => {
 
   // ---- Collection ageing: per-enrollment due days & due percentage ----
   const collectionAgeing = await db.prepare(`
-    SELECT e.id, p.person_code AS student_code, p.name, e.course, e.status, bt.name AS batch_name, e.total_fee,
+    SELECT e.id, p.person_code AS student_code, p.name, e.course, e.status,
+      (SELECT STRING_AGG(b.name, ', ') FROM enrollment_batches eb JOIN batches b ON b.id = eb.batch_id WHERE eb.enrollment_id = e.id) AS batch_name,
+      e.total_fee,
       COALESCE(f.total_collected, 0) AS fee_collected,
       (e.total_fee - COALESCE(f.total_collected, 0)) AS pending_fee,
       e.joined_date,
@@ -138,7 +140,6 @@ app.get('/', requireLogin, async (req, res) => {
         ELSE NULL END AS due_days
     FROM enrollments e
     JOIN persons p ON p.id = e.person_id
-    LEFT JOIN batches bt ON bt.id = e.batch_id
     LEFT JOIN (SELECT enrollment_id, SUM(amount) AS total_collected FROM fee_collections GROUP BY enrollment_id) f
       ON f.enrollment_id = e.id
     ${whereClause}

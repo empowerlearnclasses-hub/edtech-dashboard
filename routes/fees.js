@@ -7,11 +7,11 @@ const { requireLogin, requireViewFees, canViewFeeCollected, isOwnScopeOnly } = r
 async function buildLedgerQuery(user, query) {
   let sql = `
     SELECT f.*, p.person_code AS student_code, p.name AS student_name, e.total_fee, e.sales_staff_id, e.id AS enrollment_id,
-           bt.name AS batch_name, u.name AS collected_by_name
+           (SELECT STRING_AGG(b.name, ', ') FROM enrollment_batches eb JOIN batches b ON b.id = eb.batch_id WHERE eb.enrollment_id = e.id) AS batch_name,
+           u.name AS collected_by_name
     FROM fee_collections f
     JOIN enrollments e ON e.id = f.enrollment_id
     JOIN persons p ON p.id = e.person_id
-    LEFT JOIN batches bt ON bt.id = e.batch_id
     LEFT JOIN users u ON u.id = f.collected_by
   `;
   const params = [];

@@ -58,7 +58,7 @@
         <% enrollments.forEach(e => { %>
         <tr onclick="window.location='/enrollments/<%= e.id %>'" style="cursor:pointer;">
           <td data-label="Course"><strong><%= e.course || '—' %></strong></td>
-          <td data-label="Batch"><% if (e.batch_name) { %><a href="/batches/<%= e.batch_id %>" onclick="event.stopPropagation()"><%= e.batch_name %></a><% } else { %>—<% } %></td>
+          <td data-label="Batch"><%= e.batch_name || '—' %></td>
           <td data-label="Sales Team"><%= e.sales_staff_name || '—' %></td>
           <td data-label="Status">
             <% if (e.status === 'dropout') { %><span class="badge badge-gray">Dropout</span><% } else { %><span class="badge badge-green">Active</span><% } %>

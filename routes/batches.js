@@ -26,7 +26,7 @@ router.get('/', requireLogin, async (req, res) => {
   if (broadView) {
     batches = await db.prepare(`
       SELECT b.*, f.name AS faculty_account_name,
-        (SELECT COUNT(*) FROM enrollments e2 WHERE e2.batch_id = b.id AND e2.status = 'active') AS student_count,
+        (SELECT COUNT(*) FROM enrollment_batches eb2 JOIN enrollments e2 ON e2.id = eb2.enrollment_id WHERE eb2.batch_id = b.id AND e2.status = 'active') AS student_count,
         (SELECT COUNT(*) FROM batch_sessions bs WHERE bs.batch_id = b.id AND bs.status = 'working') AS working_days,
         (SELECT COUNT(*) FROM batch_sessions bs WHERE bs.batch_id = b.id AND bs.status = 'leave') AS leave_days,
         (SELECT COUNT(*) FROM batch_sessions bs WHERE bs.batch_id = b.id AND bs.status = 'holiday') AS holiday_days,
@@ -41,7 +41,7 @@ router.get('/', requireLogin, async (req, res) => {
     // No broad grant — fall back to "batches where I'm the assigned Faculty" only.
     batches = await db.prepare(`
       SELECT b.*, f.name AS faculty_account_name,
-        (SELECT COUNT(*) FROM enrollments e2 WHERE e2.batch_id = b.id AND e2.status = 'active') AS student_count,
+        (SELECT COUNT(*) FROM enrollment_batches eb2 JOIN enrollments e2 ON e2.id = eb2.enrollment_id WHERE eb2.batch_id = b.id AND e2.status = 'active') AS student_count,
         (SELECT COUNT(*) FROM batch_sessions bs WHERE bs.batch_id = b.id AND bs.status = 'working') AS working_days,
         (SELECT COUNT(*) FROM batch_sessions bs WHERE bs.batch_id = b.id AND bs.status = 'leave') AS leave_days,
         (SELECT COUNT(*) FROM batch_sessions bs WHERE bs.batch_id = b.id AND bs.status = 'holiday') AS holiday_days,
@@ -159,7 +159,7 @@ router.post('/:id', requireLogin, requireEditBatches, async (req, res) => {
 });
 
 router.post('/:id/delete', requireLogin, requireEditBatches, async (req, res) => {
-  const inUse = (await db.prepare('SELECT COUNT(*) AS c FROM enrollments WHERE batch_id = ?').get(req.params.id)).c;
+  const inUse = (await db.prepare('SELECT COUNT(*) AS c FROM enrollment_batches WHERE batch_id = ?').get(req.params.id)).c;
   if (inUse > 0) {
     return res.status(400).render('error', { message: `Cannot delete this batch — ${inUse} student(s) are still assigned to it. Move them to a different batch first.`, user: req.session.user });
   }
@@ -224,7 +224,7 @@ router.get('/:id', requireLogin, async (req, res) => {
   const nextMonthDate = new Date(viewYear, viewMonth, 1);
   const monthLabel = firstOfMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
-  const studentCount = (await db.prepare('SELECT COUNT(*) AS c FROM enrollments WHERE batch_id = ?').get(batch.id)).c;
+  const studentCount = (await db.prepare('SELECT COUNT(*) AS c FROM enrollment_batches WHERE batch_id = ?').get(batch.id)).c;
 
   const classStats = await db.prepare(`
     SELECT

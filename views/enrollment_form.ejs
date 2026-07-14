@@ -29,16 +29,19 @@
           <% } %>
         </div>
         <% } %>
-        <div class="form-group">
-          <label>Batch</label>
+        <div class="form-group full">
+          <label>Batch(es) <span style="font-weight:400; color:var(--text-muted); font-size:12.5px;">— tick more than one if this student attends more than one batch for this course (e.g. morning + evening)</span></label>
           <% if (batches.length > 0) { %>
-          <select name="batch_id">
-            <option value="">No batch selected</option>
+          <div class="table-wrap" style="box-shadow:none; max-height:220px; overflow-y:auto;">
             <% batches.forEach(bt => { %>
-              <option value="<%= bt.id %>" <%= String(enrollment.batch_id) === String(bt.id) ? 'selected' : '' %>><%= bt.name %></option>
+              <div class="checkbox-row" style="padding:6px 10px;">
+                <input type="checkbox" id="batch_<%= bt.id %>" name="batch_ids" value="<%= bt.id %>"
+                  <%= enrollment.batches && enrollment.batches.some(eb => String(eb.id) === String(bt.id)) ? 'checked' : '' %>>
+                <label for="batch_<%= bt.id %>"><%= bt.name %></label>
+              </div>
             <% }) %>
-          </select>
-          <div class="hint">Batches are managed under <a href="/batches">Batches</a>.</div>
+          </div>
+          <div class="hint">Batches are managed under <a href="/batches">Batches</a>. Leave all unticked if no batch is assigned yet.</div>
           <% } else { %>
           <div class="alert alert-error" style="margin:0;">No batches exist yet.</div>
           <% } %>

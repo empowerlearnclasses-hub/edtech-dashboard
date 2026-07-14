@@ -30,6 +30,9 @@ const isLocalDb = /localhost|127\.0\.0\.1/.test(connectionString);
 
 const pool = new Pool({
   connectionString,
+  // Supabase (and most hosted Postgres) requires SSL, but with a certificate chain that
+  // Node doesn't automatically trust — this is the standard, documented way to connect.
+  // A local Postgres instance skips this entirely.
   ssl: isLocalDb ? false : { rejectUnauthorized: false },
 });
 
@@ -142,7 +145,6 @@ CREATE TABLE IF NOT EXISTS enrollments (
   person_id INTEGER NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
   sales_staff_id INTEGER NOT NULL REFERENCES users(id),
   added_by INTEGER REFERENCES users(id),
-  batch_id INTEGER REFERENCES batches(id),
   course TEXT,
   joined_date TEXT,
   total_fee NUMERIC NOT NULL DEFAULT 0,
@@ -150,6 +152,16 @@ CREATE TABLE IF NOT EXISTS enrollments (
   status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','dropout')),
   created_at TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS'),
   updated_at TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+);
+
+-- A student can attend more than one batch for the same course (e.g. a morning AND an
+-- evening session) — the fee/course/status stays on the ONE enrollment above; this table
+-- just tracks which batch(es) that one enrollment is scheduled into.
+CREATE TABLE IF NOT EXISTS enrollment_batches (
+  id SERIAL PRIMARY KEY,
+  enrollment_id INTEGER NOT NULL REFERENCES enrollments(id) ON DELETE CASCADE,
+  batch_id INTEGER NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
+  UNIQUE(enrollment_id, batch_id)
 );
 
 CREATE TABLE IF NOT EXISTS fee_collections (
@@ -216,7 +228,8 @@ CREATE TABLE IF NOT EXISTS task_students (
 
 CREATE INDEX IF NOT EXISTS idx_enrollments_person ON enrollments(person_id);
 CREATE INDEX IF NOT EXISTS idx_enrollments_sales_staff ON enrollments(sales_staff_id);
-CREATE INDEX IF NOT EXISTS idx_enrollments_batch ON enrollments(batch_id);
+CREATE INDEX IF NOT EXISTS idx_enrollment_batches_enrollment ON enrollment_batches(enrollment_id);
+CREATE INDEX IF NOT EXISTS idx_enrollment_batches_batch ON enrollment_batches(batch_id);
 CREATE INDEX IF NOT EXISTS idx_fee_enrollment ON fee_collections(enrollment_id);
 CREATE INDEX IF NOT EXISTS idx_batch_sessions_batch ON batch_sessions(batch_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_batch ON tasks(batch_id);
@@ -230,6 +243,23 @@ CREATE INDEX IF NOT EXISTS idx_receipts_fee_collection ON receipt_vouchers(fee_c
 
 async function initSchema() {
   await pool.query(SCHEMA_SQL);
+
+  // If this database was created before enrollment_batches existed, "enrollments" will
+  // still have its old single batch_id column — migrate that data into the new
+  // many-to-many table (one row each), then drop the column. A brand new database never
+  // has this column, since SCHEMA_SQL above no longer defines it.
+  const { rows: enrollmentCols } = await pool.query(
+    `SELECT column_name FROM information_schema.columns WHERE table_name = 'enrollments' AND column_name = 'batch_id'`
+  );
+  if (enrollmentCols.length > 0) {
+    await pool.query(`
+      INSERT INTO enrollment_batches (enrollment_id, batch_id)
+      SELECT id, batch_id FROM enrollments WHERE batch_id IS NOT NULL
+      ON CONFLICT (enrollment_id, batch_id) DO NOTHING
+    `);
+    await pool.query(`ALTER TABLE enrollments DROP COLUMN batch_id`);
+    console.log('Migrated enrollments.batch_id into the new enrollment_batches table — a student can now be scheduled into more than one batch for the same course.');
+  }
 
   const { rows: adminRows } = await pool.query(`SELECT id FROM users WHERE role = 'admin' LIMIT 1`);
   if (adminRows.length === 0) {
