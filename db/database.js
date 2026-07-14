@@ -14,14 +14,23 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
+// A recent pg-connection-string change made 'sslmode=require' (and 'prefer'/'verify-ca')
+// behave as an alias for 'verify-full' — meaning if that query param is left in the
+// connection string, it silently overrides the explicit ssl option below and does full
+// certificate-chain verification, which fails against Supabase's cert. Stripping it out
+// and controlling SSL purely through the explicit `ssl` option avoids that conflict.
+let connectionString = process.env.DATABASE_URL;
+try {
+  const parsed = new URL(connectionString);
+  parsed.searchParams.delete('sslmode');
+  connectionString = parsed.toString();
+} catch (e) { /* fall through and use the string as-is if it doesn't parse as a URL */ }
+
+const isLocalDb = /localhost|127\.0\.0\.1/.test(connectionString);
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  // Supabase (and most hosted Postgres) requires SSL, but with a certificate chain that
-  // Node doesn't automatically trust — this is the standard, documented way to connect.
-  // A local Postgres instance (DATABASE_URL without ?sslmode=require) skips this.
-  ssl: process.env.DATABASE_URL.includes('sslmode=require') || process.env.PGSSL === 'true'
-    ? { rejectUnauthorized: false }
-    : false,
+  connectionString,
+  ssl: isLocalDb ? false : { rejectUnauthorized: false },
 });
 
 pool.on('error', (err) => {
