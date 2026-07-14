@@ -1,5 +1,7 @@
-# Node + this app's dependencies (pg, exceljs, pdfkit, etc.) — no native compiler needed.
-FROM node:20-bookworm-slim
+# Node 22+ is required — @supabase/supabase-js needs native WebSocket support that only
+# exists from Node 22 onward, even though this app only uses Supabase for Storage (not
+# realtime) — the client library initializes its realtime connection internally regardless.
+FROM node:22-bookworm-slim
 
 WORKDIR /app
 
