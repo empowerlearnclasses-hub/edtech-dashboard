@@ -12,6 +12,7 @@ const PERM_FIELDS = [
   'perm_view_fee_due', 'perm_view_fee_ageing', 'perm_view_fee_due_percentage',
   'perm_view_batches', 'perm_edit_batches', 'perm_edit_courses',
   'perm_view_invoices', 'perm_edit_invoices',
+  'perm_view_leads', 'perm_edit_leads',
 ];
 
 function permValues(body) {

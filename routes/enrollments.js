@@ -87,8 +87,11 @@ router.get('/students/:personId/enrollments/new', requireLogin, async (req, res)
   const person = await db.prepare('SELECT * FROM persons WHERE id = ?').get(req.params.personId);
   if (!person) return res.status(404).render('error', { message: 'Student not found.', user });
   const staffList = showsSalesStaffPicker(user) ? await activeSalesStaffList() : [];
+  // Arriving from "Convert to Admission" on a Lead pre-fills the course already known.
+  const { lead_id, course } = req.query;
   res.render('enrollment_form', {
-    user, person, isEdit: false, enrollment: { batches: [] }, staffList, batches: await allBatches(), courses: await courseList(),
+    user, person, isEdit: false, enrollment: { batches: [], course: course || null, lead_id: lead_id || null },
+    staffList, batches: await allBatches(), courses: await courseList(),
     feePerms: getFeePerms(user), error: null,
   });
 });
@@ -134,6 +137,12 @@ router.post('/students/:personId/enrollments', requireLogin, async (req, res) =>
   `).run(person.id, sales_staff_id, user.id, course, b.joined_date, total_fee, b.remarks || null);
 
   await setEnrollmentBatches(result.lastInsertRowid, batchIds);
+
+  // Closes the loop with the Lead this admission came from, if any.
+  if (b.lead_id) {
+    await db.prepare(`UPDATE leads SET status = 'Joined', converted_enrollment_id = ?, updated_at = to_char(now(), 'YYYY-MM-DD HH24:MI:SS') WHERE id = ?`)
+      .run(result.lastInsertRowid, b.lead_id);
+  }
 
   res.redirect('/students/' + person.id);
 });

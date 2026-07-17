@@ -197,6 +197,28 @@ function canEditInvoicesForStudent(user, student) {
   return true;
 }
 
+// ---------- Admission Leads ----------
+// Same shape as Student Master Data: Admin sees everything, Sales Team sees only their
+// own leads (full read/write, automatically), Staff is configurable, Faculty gets none.
+function canViewLeads(user) {
+  if (!user) return false;
+  if (user.role === 'admin' || user.role === 'sales_staff') return true;
+  if (user.role === 'staff') return !!user.perm_view_leads;
+  return false;
+}
+function canEditLeads(user) {
+  if (!user) return false;
+  if (user.role === 'admin' || user.role === 'sales_staff') return true;
+  if (user.role === 'staff') return !!user.perm_edit_leads;
+  return false;
+}
+function requireViewLeads(req, res, next) {
+  if (!canViewLeads(req.session.user)) {
+    return res.status(403).render('error', { message: 'You do not have permission to view admission leads.', user: req.session.user });
+  }
+  next();
+}
+
 function requireViewStudents(req, res, next) {
   if (!canViewStudents(req.session.user)) {
     return res.status(403).render('error', { message: 'You do not have permission to view student records.', user: req.session.user });
@@ -240,6 +262,9 @@ module.exports = {
   canViewInvoicesForStudent,
   canCreateInvoicesForStudent,
   canEditInvoicesForStudent,
+  canViewLeads,
+  canEditLeads,
+  requireViewLeads,
   canEditCourses,
   requireEditCourses,
   requireViewStudents,

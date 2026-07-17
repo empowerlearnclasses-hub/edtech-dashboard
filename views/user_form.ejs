@@ -101,10 +101,15 @@
                 <td style="text-align:center;" data-label="View"><input type="checkbox" name="perm_view_invoices" value="1" <%= staffUser && staffUser.perm_view_invoices ? 'checked' : '' %>></td>
                 <td style="text-align:center;" data-label="Edit"><input type="checkbox" id="peiv" name="perm_edit_invoices" value="1" <%= staffUser && staffUser.perm_edit_invoices ? 'checked' : '' %>></td>
               </tr>
+              <tr>
+                <td data-label="Field">Admission Leads</td>
+                <td style="text-align:center;" data-label="View"><input type="checkbox" name="perm_view_leads" value="1" <%= staffUser && staffUser.perm_view_leads ? 'checked' : '' %>></td>
+                <td style="text-align:center;" data-label="Edit"><input type="checkbox" name="perm_edit_leads" value="1" <%= staffUser && staffUser.perm_edit_leads ? 'checked' : '' %>></td>
+              </tr>
             </tbody>
           </table>
         </div>
-        <div class="hint" style="margin-top:10px;">Batch: View lets this account open any batch's calendar and copy Zoom links; Edit additionally lets them create batches, change the schedule, and add/change links. Course: anyone who can edit students can already pick from the existing course list — this Edit checkbox controls whether they can add a brand new course to that shared list (e.g. via "Other" on the student form). Invoices &amp; Receipts: Sales Team automatically get View + the ability to create a new invoice or generate a receipt, for their own students — but they can never edit or delete one afterward, even their own. This "Edit" checkbox is what actually grants edit/delete power, and only Staff accounts use it (Sales Team can't be granted it).</div>
+        <div class="hint" style="margin-top:10px;">Batch: View lets this account open any batch's calendar and copy Zoom links; Edit additionally lets them create batches, change the schedule, and add/change links. Course: anyone who can edit students can already pick from the existing course list — this Edit checkbox controls whether they can add a brand new course to that shared list (e.g. via "Other" on the student form). Invoices &amp; Receipts: Sales Team automatically get View + the ability to create a new invoice or generate a receipt, for their own students — but they can never edit or delete one afterward, even their own. This "Edit" checkbox is what actually grants edit/delete power, and only Staff accounts use it (Sales Team can't be granted it). Admission Leads: Sales Team automatically get full View + Edit access to their own leads — this checkbox is only for Staff accounts.</div>
       </div>
 
       <div id="permsBlock">

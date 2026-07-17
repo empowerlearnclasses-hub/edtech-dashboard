@@ -1,0 +1,84 @@
+<%- include('partials/header', { title: lead.name, user, active: 'leads' }) %>
+
+  <div class="breadcrumb"><a href="/leads">Leads</a> / <%= lead.name %></div>
+  <div class="page-header">
+    <div>
+      <h1><%= lead.name %></h1>
+      <p class="subtitle">Lead from <%= lead.lead_date %> · Sales Team: <%= lead.sales_staff_name || '—' %></p>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap: wrap;">
+      <% if (canEdit) { %><a href="/leads/<%= lead.id %>/edit" class="btn btn-outline">Edit</a><% } %>
+      <% if (user.role === 'admin') { %>
+        <form method="POST" action="/leads/<%= lead.id %>/delete" onsubmit="return confirm('Delete this lead? This cannot be undone.');">
+          <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (lead.converted_enrollment_id) { %>
+  <div class="alert alert-success" style="margin-bottom:20px;">
+    This lead has joined — converted to an admission.
+    <a href="/enrollments/<%= lead.converted_enrollment_id %>">View the enrollment →</a>
+  </div>
+  <% } %>
+
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-pad">
+      <div class="form-section-title" style="margin-top:0;">Lead details</div>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="k">Phone</div><div class="v"><%= lead.phone %></div></div>
+        <div class="detail-item"><div class="k">Course Looking For</div><div class="v"><%= lead.course_interested || '—' %></div></div>
+        <div class="detail-item"><div class="k">Place</div><div class="v"><%= lead.place || '—' %></div></div>
+        <div class="detail-item"><div class="k">Job</div><div class="v"><%= lead.job || '—' %></div></div>
+        <div class="detail-item"><div class="k">Status</div><div class="v">
+          <% if (lead.status === 'Joined') { %><span class="badge badge-green"><%= lead.status %></span>
+          <% } else { %><span class="badge badge-gray"><%= lead.status %></span><% } %>
+        </div></div>
+      </div>
+      <% if (lead.last_chat_notes) { %>
+        <div class="form-section-title">Last Chat Notes</div>
+        <div class="v" style="font-weight:400;"><%= lead.last_chat_notes %></div>
+      <% } %>
+      <% if (lead.remarks) { %>
+        <div class="form-section-title">Remarks</div>
+        <div class="v" style="font-weight:400;"><%= lead.remarks %></div>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (canEdit && !lead.converted_enrollment_id) { %>
+  <div class="section-flex">
+    <div class="col" style="flex: 1 1 320px;">
+      <div class="card card-pad">
+        <strong style="display:block; margin-bottom: 14px;">Update status</strong>
+        <form method="POST" action="/leads/<%= lead.id %>/status">
+          <div class="form-group" style="margin-bottom:12px;">
+            <select name="status_select" id="statusSelect" onchange="document.getElementById('statusOtherGroup').style.display = this.value === '__other__' ? 'block' : 'none';">
+              <% statuses.forEach(s => { %>
+                <option value="<%= s %>" <%= lead.status === s ? 'selected' : '' %>><%= s %></option>
+              <% }) %>
+              <option value="__other__">Other (type below — adds a new status)</option>
+            </select>
+          </div>
+          <div class="form-group" id="statusOtherGroup" style="display:none; margin-bottom:12px;">
+            <input type="text" name="status_other" placeholder="New status name">
+          </div>
+          <button type="submit" class="btn btn-outline" style="width:100%; justify-content:center;">Update status</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="col" style="flex: 1 1 320px;">
+      <div class="card card-pad">
+        <strong style="display:block; margin-bottom: 8px;">Convert to Admission</strong>
+        <p class="hint" style="margin-bottom:14px;">Takes you to the admission form with this lead's Name, Phone, and Course already filled in. If this phone number already belongs to a student, it becomes a new course for them instead of a duplicate profile.</p>
+        <form method="POST" action="/leads/<%= lead.id %>/convert">
+          <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Convert to Admission →</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <% } %>
+
+<%- include('partials/footer') %>

@@ -336,7 +336,19 @@ router.get('/new', requireLogin, requireViewStudents, async (req, res) => {
   const user = req.session.user;
   if (!canEditStudents(user)) return res.status(403).render('error', { message: 'You do not have permission to add students.', user });
   const staffList = showsSalesStaffPicker(user) ? await activeSalesStaffList() : [];
-  res.render('student_form', { user, isEdit: false, formValues: {}, personId: null, studentCode: null, staffList, batches: await allBatches(), courses: await courseList(), error: null, feePerms: getFeePerms(user) });
+  const courses = await courseList();
+  // Arriving from "Convert to Admission" on a Lead pre-fills what's already known.
+  const { lead_id, name, phone, course } = req.query;
+  let formValues = {};
+  if (lead_id) {
+    const courseMatches = course && courses.includes(course);
+    formValues = {
+      name: name || '', phone_call: phone || '', phone_whatsapp: phone || '', lead_id,
+      course_select: courseMatches ? course : (course ? '__other__' : ''),
+      course_other: courseMatches ? '' : (course || ''),
+    };
+  }
+  res.render('student_form', { user, isEdit: false, formValues, personId: null, studentCode: null, staffList, batches: await allBatches(), courses, error: null, feePerms: getFeePerms(user) });
 });
 
 router.post('/', requireLogin, requireViewStudents, async (req, res) => {
@@ -393,6 +405,12 @@ router.post('/', requireLogin, requireViewStudents, async (req, res) => {
   const insertEnrollmentBatch = db.prepare(`INSERT INTO enrollment_batches (enrollment_id, batch_id) VALUES (?, ?) ON CONFLICT (enrollment_id, batch_id) DO NOTHING`);
   for (const batchId of validBatchIds) {
     await insertEnrollmentBatch.run(enrollResult.lastInsertRowid, batchId);
+  }
+
+  // Closes the loop with the Lead this admission came from, if any.
+  if (b.lead_id) {
+    await db.prepare(`UPDATE leads SET status = 'Joined', converted_enrollment_id = ?, updated_at = to_char(now(), 'YYYY-MM-DD HH24:MI:SS') WHERE id = ?`)
+      .run(enrollResult.lastInsertRowid, b.lead_id);
   }
 
   res.redirect('/students/' + personResult.lastInsertRowid);

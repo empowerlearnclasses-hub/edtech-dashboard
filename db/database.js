@@ -67,6 +67,8 @@ CREATE TABLE IF NOT EXISTS users (
   perm_edit_courses INTEGER NOT NULL DEFAULT 0,
   perm_view_invoices INTEGER NOT NULL DEFAULT 0,
   perm_edit_invoices INTEGER NOT NULL DEFAULT 0,
+  perm_view_leads INTEGER NOT NULL DEFAULT 0,
+  perm_edit_leads INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
 );
 
@@ -91,6 +93,16 @@ CREATE TABLE IF NOT EXISTS company_settings (
 );
 
 CREATE TABLE IF NOT EXISTS courses (
+  id SERIAL PRIMARY KEY,
+  name TEXT UNIQUE NOT NULL,
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+);
+
+-- Free-form pipeline stages (New, Follow-up, Not Interested, Joined, ...) — unlike
+-- Courses, any Sales Team member can add a new one directly, no permission gate; this is
+-- their own pipeline-tracking vocabulary, not something that affects billing structure.
+CREATE TABLE IF NOT EXISTS lead_statuses (
   id SERIAL PRIMARY KEY,
   name TEXT UNIQUE NOT NULL,
   created_by INTEGER REFERENCES users(id),
@@ -162,6 +174,29 @@ CREATE TABLE IF NOT EXISTS enrollment_batches (
   enrollment_id INTEGER NOT NULL REFERENCES enrollments(id) ON DELETE CASCADE,
   batch_id INTEGER NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
   UNIQUE(enrollment_id, batch_id)
+);
+
+-- Admission leads — the thing that used to live in a WhatsApp-fed Excel/Google Sheet.
+-- "Joined" is a special status (not just another label): once a lead is converted into a
+-- real admission (a Person + Enrollment), converted_enrollment_id links back to it, and
+-- the lead's status becomes "Joined" automatically — see routes/students.js and
+-- routes/enrollments.js, which both accept an optional lead_id to close this loop.
+CREATE TABLE IF NOT EXISTS leads (
+  id SERIAL PRIMARY KEY,
+  lead_date TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  name TEXT NOT NULL,
+  course_interested TEXT,
+  place TEXT,
+  job TEXT,
+  remarks TEXT,
+  last_chat_notes TEXT,
+  status TEXT NOT NULL DEFAULT 'New',
+  sales_staff_id INTEGER NOT NULL REFERENCES users(id),
+  converted_enrollment_id INTEGER REFERENCES enrollments(id) ON DELETE SET NULL,
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS'),
+  updated_at TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
 );
 
 CREATE TABLE IF NOT EXISTS fee_collections (
@@ -239,10 +274,25 @@ CREATE INDEX IF NOT EXISTS idx_task_students_enrollment ON task_students(enrollm
 CREATE INDEX IF NOT EXISTS idx_invoices_enrollment ON invoices(enrollment_id);
 CREATE INDEX IF NOT EXISTS idx_receipts_enrollment ON receipt_vouchers(enrollment_id);
 CREATE INDEX IF NOT EXISTS idx_receipts_fee_collection ON receipt_vouchers(fee_collection_id);
+CREATE INDEX IF NOT EXISTS idx_leads_sales_staff ON leads(sales_staff_id);
+CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
 `;
 
 async function initSchema() {
   await pool.query(SCHEMA_SQL);
+
+  // Add any users columns introduced after this database was first created — a fresh
+  // database already has these from SCHEMA_SQL above, so this is a no-op for it.
+  const { rows: userCols } = await pool.query(
+    `SELECT column_name FROM information_schema.columns WHERE table_name = 'users'`
+  );
+  const existingUserCols = userCols.map(r => r.column_name);
+  for (const col of ['perm_view_leads', 'perm_edit_leads']) {
+    if (!existingUserCols.includes(col)) {
+      await pool.query(`ALTER TABLE users ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0`);
+      console.log(`Migrated users table: added column "${col}"`);
+    }
+  }
 
   // If this database was created before enrollment_batches existed, "enrollments" will
   // still have its old single batch_id column — migrate that data into the new
@@ -272,9 +322,10 @@ async function initSchema() {
         perm_view_fee_collected, perm_edit_fee_collected,
         perm_view_fee_due, perm_view_fee_ageing, perm_view_fee_due_percentage,
         perm_view_batches, perm_edit_batches, perm_edit_courses,
-        perm_view_invoices, perm_edit_invoices
+        perm_view_invoices, perm_edit_invoices,
+        perm_view_leads, perm_edit_leads
       )
-      VALUES ($1, $2, $3, 'admin', 'Administrator', 1,1, 1,1, 1,1, 1,1,1, 1,1, 1, 1,1)
+      VALUES ($1, $2, $3, 'admin', 'Administrator', 1,1, 1,1, 1,1, 1,1,1, 1,1, 1, 1,1, 1,1)
     `, ['admin', hash, 'Administrator']);
     console.log('Seeded default admin user -> username: admin | password: admin123 (please change this after first login)');
   }

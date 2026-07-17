@@ -8,10 +8,14 @@
     </div>
   </div>
 
+  <% if (enrollment.lead_id) { %>
+  <div class="alert alert-success" style="margin-bottom:16px;">Converting a lead into an admission for <%= person.name %> — Course is pre-filled from that lead. Complete the rest and save to finish.</div>
+  <% } %>
   <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
 
   <div class="card card-pad">
     <form method="POST" action="<%= isEdit ? '/enrollments/' + enrollment.id : '/students/' + person.id + '/enrollments' %>">
+      <% if (enrollment.lead_id) { %><input type="hidden" name="lead_id" value="<%= enrollment.lead_id %>"><% } %>
 
       <div class="form-grid">
         <% if (user.role !== 'sales_staff') { %>

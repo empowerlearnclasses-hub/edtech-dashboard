@@ -1,0 +1,118 @@
+<%- include('partials/header', { title: 'Leads', user, active: 'leads' }) %>
+
+  <div class="page-header">
+    <div>
+      <h1>Admission Leads</h1>
+      <p class="subtitle"><%= leads.length %> lead<%= leads.length === 1 ? '' : 's' %> <%= user.role === 'sales_staff' ? 'assigned to you' : 'in the pipeline' %></p>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap: wrap;">
+      <a href="/leads/export?q=<%= encodeURIComponent(filters.q) %>&course=<%= encodeURIComponent(filters.course) %>&status=<%= encodeURIComponent(filters.status) %>&place=<%= encodeURIComponent(filters.place) %>&job=<%= encodeURIComponent(filters.job) %>&from=<%= filters.from %>&to=<%= filters.to %>&staff_id=<%= filters.staff_id %>" class="btn btn-outline">Export</a>
+      <% if (canEdit) { %><a href="/leads/new" class="btn btn-primary">+ Add Lead</a><% } %>
+    </div>
+  </div>
+
+  <form class="filters-bar" method="GET" action="/leads">
+    <div class="form-group">
+      <label>Search</label>
+      <input type="text" name="q" placeholder="Name or phone" value="<%= filters.q %>">
+    </div>
+    <div class="form-group">
+      <label>Lead date from</label>
+      <input type="date" name="from" value="<%= filters.from %>">
+    </div>
+    <div class="form-group">
+      <label>Lead date to</label>
+      <input type="date" name="to" value="<%= filters.to %>">
+    </div>
+    <div class="form-group">
+      <label>Course</label>
+      <select name="course">
+        <option value="">All courses</option>
+        <% courses.forEach(c => { %>
+          <option value="<%= c %>" <%= filters.course === c ? 'selected' : '' %>><%= c %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <select name="status">
+        <option value="">All statuses</option>
+        <% statuses.forEach(s => { %>
+          <option value="<%= s %>" <%= filters.status === s ? 'selected' : '' %>><%= s %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Place</label>
+      <input type="text" name="place" placeholder="Any place" value="<%= filters.place %>">
+    </div>
+    <div class="form-group">
+      <label>Job</label>
+      <input type="text" name="job" placeholder="Any job" value="<%= filters.job %>">
+    </div>
+    <% if (staffList.length > 0) { %>
+    <div class="form-group">
+      <label>Sales Team</label>
+      <select name="staff_id">
+        <option value="">All staff</option>
+        <% staffList.forEach(s => { %>
+          <option value="<%= s.id %>" <%= String(filters.staff_id) === String(s.id) ? 'selected' : '' %>><%= s.name %></option>
+        <% }) %>
+      </select>
+    </div>
+    <% } %>
+    <button type="submit" class="btn btn-outline">Filter</button>
+    <% if (Object.values(filters).some(v => v)) { %><a href="/leads" class="btn btn-outline">Clear</a><% } %>
+  </form>
+
+  <% if (Object.keys(statusCounts).length > 0) { %>
+  <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); margin-bottom: 16px;">
+    <% Object.entries(statusCounts).forEach(([status, count]) => { %>
+      <div class="stat-card <%= status === 'Joined' ? 'green' : '' %>"><div class="label"><%= status %></div><div class="value"><%= count %></div></div>
+    <% }) %>
+  </div>
+  <% } %>
+
+  <% if (leads.length === 0) { %>
+    <div class="card"><div class="empty-state">
+      <div class="big">📋</div>
+      No leads match the current filters.
+      <% if (canEdit) { %><br><a href="/leads/new">Add your first lead</a><% } %>
+    </div></div>
+  <% } else { %>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Course</th>
+          <th>Place</th>
+          <th>Job</th>
+          <th>Status</th>
+          <th>Sales Team</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% leads.forEach(l => { %>
+        <tr onclick="window.location='/leads/<%= l.id %>'" style="cursor:pointer;">
+          <td data-label="Date"><%= l.lead_date %></td>
+          <td data-label="Name"><strong><%= l.name %></strong></td>
+          <td data-label="Phone"><%= l.phone %></td>
+          <td data-label="Course"><%= l.course_interested || '—' %></td>
+          <td data-label="Place"><%= l.place || '—' %></td>
+          <td data-label="Job"><%= l.job || '—' %></td>
+          <td data-label="Status">
+            <% if (l.status === 'Joined') { %><span class="badge badge-green"><%= l.status %></span>
+            <% } else { %><span class="badge badge-gray"><%= l.status %></span><% } %>
+          </td>
+          <td data-label="Sales Team"><%= l.sales_staff_name || '—' %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+<%- include('partials/footer') %>
