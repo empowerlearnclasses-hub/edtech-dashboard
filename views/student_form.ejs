@@ -8,10 +8,14 @@
     </div>
   </div>
 
+  <% if (formValues.lead_id) { %>
+  <div class="alert alert-success" style="margin-bottom:16px;">Converting a lead into an admission — Name, Phone, and Course are pre-filled from that lead. Complete the rest (Batch, Fee, Joined Date) and save to finish.</div>
+  <% } %>
   <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
 
   <div class="card card-pad">
     <form method="POST" action="/students">
+      <% if (formValues.lead_id) { %><input type="hidden" name="lead_id" value="<%= formValues.lead_id %>"><% } %>
 
       <div class="form-section-title">Basic details</div>
       <div class="form-grid">

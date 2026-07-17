@@ -17,6 +17,9 @@
     <% if (typeof navShowStudents !== 'undefined' && navShowStudents) { %>
       <a href="/students" class="<%= typeof active !== 'undefined' && active === 'students' ? 'active' : '' %>">Students</a>
     <% } %>
+    <% if (typeof navShowLeads !== 'undefined' && navShowLeads) { %>
+      <a href="/leads" class="<%= typeof active !== 'undefined' && active === 'leads' ? 'active' : '' %>">Leads</a>
+    <% } %>
     <% if (typeof navShowFees !== 'undefined' && navShowFees) { %>
       <a href="/fees" class="<%= typeof active !== 'undefined' && active === 'fees' ? 'active' : '' %>">Fee Collection</a>
     <% } %>

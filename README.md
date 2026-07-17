@@ -93,7 +93,18 @@ Beyond fee collection, day-to-day work often includes duties that aren't about m
 
 This is fully separate from the Fee permission system — assigning someone a task doesn't grant them any extra access to fee or student data, and vice versa.
 
-## 5. Person & Enrollment — one Student ID, any number of courses
+## 5. Admission Leads — the pipeline before someone becomes a student
+
+This replaces tracking WhatsApp/call enquiries in a separate Excel or Google Sheet. A **Lead** captures someone who's shown interest but hasn't (yet) enrolled: Date of Lead, Phone, Name, Course Looking For, Place, Job, Remarks, Last Chat Notes, and Status.
+
+- **Access matches Student Master Data exactly**: Admin sees every lead; Sales Team automatically has full access to their own leads only; Staff access is configurable under Staff & Access ("Admission Leads" row); Faculty has none.
+- **Status is free-form and shared** — anyone who can edit leads (including Sales Team, no special permission needed) can type a new status straight into the form via "Other," and it immediately becomes available in everyone's dropdown from then on. Two statuses always exist no matter what: **New** (the default for a freshly added lead) and **Joined** (see below).
+- **Filter by anything**: the Leads list can be filtered by search (name/phone), lead date range, course, status, place, job, and — for Admin/Staff — Sales Team member, all at once.
+- **Export** works the same way as everywhere else in this app — an Excel download respecting whatever filters are currently applied.
+
+**Converting a lead into an admission**: open the lead and click **Convert to Admission**. This doesn't duplicate any work — it takes you straight into the same "Add Student" (or "Add another course," if that phone number already belongs to an existing student) form used everywhere else in this app, with Name, Phone, and Course already filled in from the lead. Complete the remaining details (Batch, Fee, Joined Date) and save as normal. The moment that admission is created, the lead automatically flips to **Joined** status and shows a link back to the new enrollment — nothing needs to be updated by hand on the lead's side afterward.
+
+## 6. Person & Enrollment — one Student ID, any number of courses
 
 **Every student has exactly one Student ID for life, no matter how many courses they take.** Their name, phone, email, and other personal details live in one place (their **Person** profile); each course they enroll in — with its own batch, fee, Sales Team credit, joined date, and fee/invoice/receipt history — is a separate **Enrollment** underneath that same profile.
 
@@ -101,7 +112,7 @@ This is fully separate from the Fee permission system — assigning someone a ta
 - **When that same person comes back for a second course**, open their profile and use **"+ Add another course"** — this does *not* create a new Student ID or a duplicate record. It adds a second Enrollment under their existing profile, so their old course's fee history stays completely separate from the new one.
 - **A student's profile page** now shows their contact details once, plus a list of every course they've enrolled in — click any course to open that specific Enrollment, where its fee collection, invoices, and receipts live.
 - **Fee, invoice, and receipt records always belong to one specific Enrollment**, never to the person generally — recording a payment for their Web Development course has zero effect on their Data Analytics course's numbers, even though it's the same person.
-- **Import** recognizes this too: uploading a row with a Student ID that already exists adds a new course for that person instead of creating a duplicate profile — see Section 9.
+- **Import** recognizes this too: uploading a row with a Student ID that already exists adds a new course for that person instead of creating a duplicate profile — see Section 10.
 
 **One Enrollment can be scheduled into more than one Batch.** If a student attends two sessions of the *same* course (e.g. a morning batch and an evening batch), that's still just **one** Enrollment, one fee, one invoice/receipt history — you just tick more than one batch when adding or editing that enrollment. This is different from taking a second course: same course + extra batch = tick another box on the same enrollment; a genuinely different course = "+ Add another course" (a whole new Enrollment). Tasks and attendance-style features scoped to "a batch" pick up a student correctly regardless of which of their batches matches.
 
@@ -110,7 +121,7 @@ This is fully separate from the Fee permission system — assigning someone a ta
 - Keeps its full fee/invoice/receipt history intact and visible — nothing is deleted, it's just excluded from active totals.
 - Still shows up if you explicitly filter for it (Dashboard's Status filter, or the Students list's Status filter).
 
-## 6. How the linking works
+## 7. How the linking works
 
 1. A Sales Team (or Admin) adds a student in **Students → Add Student**, filling in their details, course, batch, and the **Total Fee Allocated**. This creates their Person profile and first Enrollment together.
 2. Whenever a payment comes in, open that specific course's Enrollment page and use **Record fee collection** on the right-hand side — enter the amount and the date collected.
@@ -121,7 +132,7 @@ This is fully separate from the Fee permission system — assigning someone a ta
 
 The consolidated **Fee Collection** tab in the navigation shows every payment across every enrollment (filterable by date), while still respecting each user's access rights.
 
-## 7. Dashboard: collection ageing & staff performance
+## 8. Dashboard: collection ageing & staff performance
 
 The home Dashboard now includes:
 
@@ -133,7 +144,7 @@ The home Dashboard now includes:
 
 Sales Team only ever see their own students in these views; Admin sees the whole institution.
 
-## 8. Student Master Data fields
+## 9. Student Master Data fields
 
 **Person profile** (shared across all their courses): Student ID (auto-generated, e.g. `STU0001`), Name, Phone No. (WhatsApp), Phone No. (Call), Mail ID, Location, District, State, Pincode, Job Role, Job/Business Name, Job Location.
 
@@ -145,17 +156,17 @@ Sales Team only ever see their own students in these views; Admin sees the whole
 
 **Picking a deleted Batch or Course is explicitly rejected**, not silently ignored — if a stale page still shows a Batch that's since been deleted (e.g. a tab left open), submitting it gives a clear error asking you to pick a current one, rather than quietly saving the enrollment without that batch attached.
 
-## 9. Importing & exporting Student Master Data
+## 10. Importing & exporting Student Master Data
 
 - **Export** (Students → Export): downloads an .xlsx of whatever's currently filtered on the Students page — respects your search/batch/course/staff filters, and only includes the fee columns you actually have permission to see.
 - **Import** (Students → Import, requires edit rights): upload an .xlsx with the same columns as the export. A row with a **Student ID** that matches an existing record **updates** that student; a row with no Student ID (or one that doesn't match) **creates** a new one. Required columns: Student ID (can be blank), Name, Sales Team (must match an existing account name), Joined Date (YYYY-MM-DD). Everything else is optional. After importing, you'll see exactly how many rows were created, updated, or skipped — and why, for anything skipped (e.g. a Sales Team name that didn't match any account).
 - The easiest way to build an import file correctly is to export first, edit that file, and re-upload it.
 
-## 10. Fee Collection — date-wise export
+## 11. Fee Collection — date-wise export
 
 The Fee Collection ledger (Fee Collection tab) has its own **Export** button, right next to the date filter. It exports exactly what's currently on screen — so setting a From/To range and then exporting gives you a clean, complete, date-wise record of every payment in that window: Collection Date, Student ID, Student Name, Batch, Amount Collected, Collected By, Notes, and a Total row at the bottom. Leave the dates blank to export the complete all-time ledger instead.
 
-## 11. Invoices & Receipt Vouchers (PDF)
+## 12. Invoices & Receipt Vouchers (PDF)
 
 Every student's page now has two sections for generating real PDF documents:
 
@@ -174,7 +185,7 @@ Receipt Vouchers deliberately don't show bank details or a QR code, since they'r
 
 **Company branding is centrally editable** under **Settings** (Admin only): upload your logo and QR code (PNG/JPG), set your address, phone, email, GSTIN, bank details, and UPI ID, and write separate Terms & Conditions text for Invoices and for Receipt Vouchers. Every PDF generated afterward picks these up automatically — change your terms once, and every invoice from then on reflects it. (Existing PDFs already downloaded are obviously unaffected, since a PDF is a fixed snapshot at the moment it was generated.) The document title (e.g. "INVOICE" or "RECEIPT VOUCHER") always sits on its own line at the very top of the page, so it's never at risk of overlapping the company name regardless of how long the title text is.
 
-## 12. Batches — schedules, Zoom links, and faculty
+## 13. Batches — schedules, Zoom links, and faculty
 
 A student's Batch is no longer just a label — it's created first under the **Batches** tab, and students then pick from that list.
 
@@ -191,7 +202,7 @@ A student's Batch is no longer just a label — it's created first under the **B
 - **Recording gaps are summarized, not just per-day** — both the individual batch calendar and the main Batches list show **Classes Completed** and **Recording Pending** counts, so it's easy to spot at a glance which batches have classes done but recordings not yet uploaded, without having to click into each one.
 - Batches also show up as an option when creating a **Task** scoped to "every student in one batch" (see above) — and the student list, dashboard, and student profile all link back to a batch's calendar wherever its name appears.
 
-## 13. Backing up your data
+## 14. Backing up your data
 
 Your data lives in your Postgres database (Supabase, or wherever `DATABASE_URL` points), not on the computer running the app — so there's no local file to copy. To back up:
 
@@ -201,7 +212,7 @@ Your data lives in your Postgres database (Supabase, or wherever `DATABASE_URL` 
 
 To start fresh with an empty database, either create a new Supabase project and point `DATABASE_URL` at it, or manually drop all the tables in your existing one — the app recreates its full schema and a default admin account automatically the next time it starts against an empty database.
 
-## 14. Running this on a shared office computer / small network
+## 15. Running this on a shared office computer / small network
 
 If you're running the app itself locally (with `DATABASE_URL` pointing at Supabase or a local Postgres) rather than hosting it online, by default the dashboard is only reachable from the same computer (`localhost`). If your sales team needs to reach it from their own computers on the same office network:
 
@@ -211,13 +222,13 @@ If you're running the app itself locally (with `DATABASE_URL` pointing at Supaba
 
 This is fine for a small trusted office network. It is **not** set up for exposing the dashboard to the public internet — doing that would need HTTPS and additional security hardening. **For proper hosting reachable from anywhere (not just one office network), see `DEPLOYMENT.md`** — it walks through free hosting on Render, with Supabase as the database, which already includes HTTPS.
 
-## 15. Project structure
+## 16. Project structure
 
 ```
 server.js              Entry point
 db/database.js         Postgres schema + default admin seed
 middleware/auth.js      Login & access-right checks
-routes/                 auth, students, fees, users, tasks, batches, courses, settings, invoices, receipts, enrollments
+routes/                 auth, students, leads, fees, users, tasks, batches, courses, settings, invoices, receipts, enrollments
 utils/                  PDF generation (invoices/receipts) and number-to-words conversion
 views/                  EJS pages
 public/css/style.css    Styling

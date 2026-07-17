@@ -7,7 +7,7 @@ require('dotenv').config();
 
 const { pool, initSchema } = require('./db/database');
 const db = require('./db/database');
-const { requireLogin, isOwnScopeOnly, isFacultyRole, canViewStudents, canViewFees, canViewBatches, getFeePerms } = require('./middleware/auth');
+const { requireLogin, isOwnScopeOnly, isFacultyRole, canViewStudents, canViewFees, canViewBatches, canViewLeads, getFeePerms } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -54,12 +54,14 @@ app.use(async (req, res, next) => {
     res.locals.navShowStudents = canViewStudents(user);
     res.locals.navShowFees = canViewFees(user);
     res.locals.navShowBatches = canViewBatches(user) || isFacultyOnAnyBatch;
+    res.locals.navShowLeads = canViewLeads(user);
   }
   next();
 });
 
 app.use('/', require('./routes/auth'));
 app.use('/students', require('./routes/students'));
+app.use('/leads', require('./routes/leads'));
 app.use('/fees', require('./routes/fees'));
 app.use('/users', require('./routes/users'));
 app.use('/tasks', require('./routes/tasks'));
