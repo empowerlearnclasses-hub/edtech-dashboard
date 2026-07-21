@@ -84,6 +84,7 @@
           <th>Name</th>
           <th>Phone (Call)</th>
           <th>Courses</th>
+          <% if (user.role !== 'sales_staff') { %><th>Sales Team</th><% } %>
           <% if (feePerms.viewAllocated) { %><th class="num">Fee (active)</th><% } %>
           <% if (feePerms.viewCollected) { %><th class="num">Collected (active)</th><% } %>
           <% if (feePerms.viewDue) { %><th class="num">Pending (active)</th><% } %>
@@ -100,6 +101,7 @@
             <% if (s.courses_summary) { %><div class="hint" style="margin-top:2px;"><%= s.courses_summary %></div><% } %>
             <% if (s.active_enrollment_count < s.enrollment_count) { %><span class="badge badge-gray" style="margin-top:4px;"><%= s.enrollment_count - s.active_enrollment_count %> dropout</span><% } %>
           </td>
+          <% if (user.role !== 'sales_staff') { %><td data-label="Sales Team"><%= s.sales_staff_names || '—' %></td><% } %>
           <% if (feePerms.viewAllocated) { %><td class="num" data-label="Fee">₹<%= s.total_fee.toLocaleString('en-IN') %></td><% } %>
           <% if (feePerms.viewCollected) { %><td class="num" data-label="Collected">₹<%= s.fee_collected.toLocaleString('en-IN') %></td><% } %>
           <% if (feePerms.viewDue) { %>

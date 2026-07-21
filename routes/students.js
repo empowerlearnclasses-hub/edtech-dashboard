@@ -19,6 +19,7 @@ const PERSON_LIST_SELECT = `
     (SELECT COUNT(*) FROM enrollments e WHERE e.person_id = p.id) AS enrollment_count,
     (SELECT COUNT(*) FROM enrollments e WHERE e.person_id = p.id AND e.status = 'active') AS active_enrollment_count,
     (SELECT STRING_AGG(DISTINCT e.course, ', ') FROM enrollments e WHERE e.person_id = p.id) AS courses_summary,
+    (SELECT STRING_AGG(DISTINCT u.name, ', ') FROM enrollments e JOIN users u ON u.id = e.sales_staff_id WHERE e.person_id = p.id) AS sales_staff_names,
     (SELECT COALESCE(SUM(e.total_fee), 0) FROM enrollments e WHERE e.person_id = p.id AND e.status = 'active') AS total_fee,
     (SELECT COALESCE(SUM(f.amount), 0) FROM fee_collections f JOIN enrollments e ON e.id = f.enrollment_id WHERE e.person_id = p.id AND e.status = 'active') AS fee_collected
   FROM persons p

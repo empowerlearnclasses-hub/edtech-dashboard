@@ -133,6 +133,7 @@ app.get('/', requireLogin, async (req, res) => {
   const collectionAgeing = await db.prepare(`
     SELECT e.id, p.person_code AS student_code, p.name, e.course, e.status,
       (SELECT STRING_AGG(b.name, ', ') FROM enrollment_batches eb JOIN batches b ON b.id = eb.batch_id WHERE eb.enrollment_id = e.id) AS batch_name,
+      u.name AS sales_staff_name,
       e.total_fee,
       COALESCE(f.total_collected, 0) AS fee_collected,
       (e.total_fee - COALESCE(f.total_collected, 0)) AS pending_fee,
@@ -142,6 +143,7 @@ app.get('/', requireLogin, async (req, res) => {
         ELSE NULL END AS due_days
     FROM enrollments e
     JOIN persons p ON p.id = e.person_id
+    LEFT JOIN users u ON u.id = e.sales_staff_id
     LEFT JOIN (SELECT enrollment_id, SUM(amount) AS total_collected FROM fee_collections GROUP BY enrollment_id) f
       ON f.enrollment_id = e.id
     ${whereClause}

@@ -88,6 +88,7 @@
           <table>
             <thead><tr>
               <th>Student ID</th><th>Name</th><th>Course</th><th>Status</th><th>Batch</th>
+              <% if (user.role !== 'sales_staff') { %><th>Sales Team</th><% } %>
               <% if (feePerms.viewAllocated) { %><th class="num">Fee</th><% } %>
               <% if (feePerms.viewCollected) { %><th class="num">Collected</th><% } %>
               <% if (feePerms.viewDue) { %><th class="num">Pending</th><% } %>
@@ -102,6 +103,7 @@
                 <td data-label="Course"><%= s.course || '—' %></td>
                 <td data-label="Status"><% if (s.status === 'dropout') { %><span class="badge badge-gray">Dropout</span><% } else { %><span class="badge badge-green">Active</span><% } %></td>
                 <td data-label="Batch"><%= s.batch_name || '—' %></td>
+                <% if (user.role !== 'sales_staff') { %><td data-label="Sales Team"><%= s.sales_staff_name || '—' %></td><% } %>
                 <% if (feePerms.viewAllocated) { %><td class="num" data-label="Fee">₹<%= s.total_fee.toLocaleString('en-IN') %></td><% } %>
                 <% if (feePerms.viewCollected) { %><td class="num" data-label="Collected">₹<%= s.fee_collected.toLocaleString('en-IN') %></td><% } %>
                 <% if (feePerms.viewDue) { %><td class="num" data-label="Pending">₹<%= s.pending_fee.toLocaleString('en-IN') %></td><% } %>
