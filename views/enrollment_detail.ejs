@@ -100,7 +100,7 @@
                 <% } else { %>—<% } %>
               </td>
               <td>
-                <% if (user.role === 'admin' || (user.role === 'sales_staff' && enrollment.sales_staff_id === user.id) || (user.role === 'staff' && feePerms.editCollected)) { %>
+                <% if (user.role === 'admin' || (user.role === 'staff' && feePerms.editCollected)) { %>
                 <form method="POST" action="/enrollments/<%= enrollment.id %>/fees/<%= f.id %>/delete" onsubmit="return confirm('Remove this fee collection entry?');">
                   <button type="submit" class="btn btn-sm btn-danger">Remove</button>
                 </form>

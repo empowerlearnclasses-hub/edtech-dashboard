@@ -300,10 +300,11 @@ router.post('/enrollments/:id/fees/:feeId/delete', requireLogin, async (req, res
   const user = req.session.user;
   const enrollment = await db.prepare('SELECT * FROM enrollments WHERE id = ?').get(req.params.id);
   if (!enrollment) return res.status(404).render('error', { message: 'Enrollment not found.', user });
-  const allowed = user.role === 'admin'
-    || (user.role === 'sales_staff' && enrollment.sales_staff_id === user.id)
-    || (user.role === 'staff' && canEditFeeCollected(user));
-  if (!allowed) return res.status(403).render('error', { message: 'You do not have permission to remove this fee entry.', user });
+  // Sales Team can record a fee collection and download its receipt, but — same as
+  // invoices/receipts — can never remove one, even one they entered themselves. Only
+  // Admin, or Staff explicitly granted "Fee Collected: Edit", can do that.
+  const allowed = user.role === 'admin' || (user.role === 'staff' && canEditFeeCollected(user));
+  if (!allowed) return res.status(403).render('error', { message: 'You do not have permission to remove this fee entry. Only Admin can remove a recorded fee collection.', user });
   await db.prepare('DELETE FROM fee_collections WHERE id = ? AND enrollment_id = ?').run(req.params.feeId, req.params.id);
   res.redirect('/enrollments/' + req.params.id);
 });
